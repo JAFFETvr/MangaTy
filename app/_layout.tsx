@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+// This import triggers setupDependencies() immediately
+import '@/src/di/inject';
 
 export const unstable_settings = {
   anchor: '(tabs)',

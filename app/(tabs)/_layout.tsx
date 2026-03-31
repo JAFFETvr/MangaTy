@@ -1,35 +1,47 @@
+import { COLORS } from '@/src/core/theme';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: COLORS.pink,
+        tabBarInactiveTintColor: COLORS.textMuted,
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: COLORS.border,
+          backgroundColor: '#fff',
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Inicio',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏠</Text> as any,
+          tabBarLabel: 'Inicio',
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="favorites"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Favoritos',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⭐</Text> as any,
+          tabBarLabel: 'Favoritos',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text> as any,
+          tabBarLabel: 'Perfil',
         }}
       />
     </Tabs>
   );
 }
+
+import { Text } from 'react-native';
+

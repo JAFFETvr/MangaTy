@@ -1,98 +1,112 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * HomeScreen - Tab 1 - Grid de mangas con búsqueda
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
+import { COLORS } from '@/src/core/theme';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { HomeViewModel } from '@/src/features/manga/presentation';
+import { MangaCard } from '@/src/features/manga/presentation/components';
+import { BottomNav, SearchBar, TopBar } from '@/src/shared/components';
+import { useMVVM, useStateFlow } from '@/src/shared/hooks';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  content: {
+    paddingHorizontal: 8,
+    paddingBottom: 80,
+  },
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 8,
+  },
+  gridItem: {
+    width: '50%',
+    paddingHorizontal: 8,
+    marginBottom: 16,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  error: {
+    color: '#B71C1C',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const viewModel = serviceLocator.get<HomeViewModel>(DIKeys.HOME_VIEW_MODEL);
+  const state = useStateFlow(viewModel.state$);
+
+  useMVVM(
+    async () => {
+      await viewModel.loadMangas();
+    },
+    undefined
+  );
+
+  const handleMangaPress = (mangaId: number) => {
+    router.push({
+      pathname: '/manga-detail',
+      params: { mangaId },
+    } as any);
+  };
+
+  const handleSearch = async (query: string) => {
+    await viewModel.search(query);
+  };
+
+  if (state.isLoading && state.filteredMangas.length === 0) {
+    return (
+      <View style={styles.container}>
+        <TopBar coinBalance={50} onMenuPress={() => setMenuOpen(true)} onBellPress={() => {}} />
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={COLORS.pink} />
+        </View>
+        <BottomNav activeTab="home" onTabChange={() => {}} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <TopBar coinBalance={50} onMenuPress={() => setMenuOpen(true)} onBellPress={() => {}} />
+
+      <SearchBar onSearch={handleSearch} />
+
+      <FlatList
+        data={state.filteredMangas}
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={2}
+        renderItem={({ item }) => (
+          <View style={styles.gridItem}>
+            <MangaCard manga={item} onPress={() => handleMangaPress(item.id)} />
+          </View>
+        )}
+        contentContainerStyle={styles.content}
+        scrollEnabled={true}
+      />
+
+      {state.error && <Text style={styles.error}>{state.error}</Text>}
+
+      <BottomNav activeTab="home" onTabChange={() => {}} />
+    </View>
+  );
+}
