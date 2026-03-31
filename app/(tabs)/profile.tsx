@@ -5,7 +5,6 @@
 import { COLORS, TYPOGRAPHY } from '@/src/core/theme';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { ProfileViewModel } from '@/src/features/user/presentation';
-import { BottomNav } from '@/src/shared/components';
 import { useMVVM, useStateFlow } from '@/src/shared/hooks';
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -63,7 +62,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingBottom: 90,
+    paddingBottom: 20,
   },
   statsRow: {
     flexDirection: 'row',
@@ -191,7 +190,6 @@ export default function ProfileScreen() {
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={COLORS.pink} />
         </View>
-        <BottomNav activeTab="profile" onTabChange={() => {}} />
       </View>
     );
   }
@@ -290,8 +288,6 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>Versión 1.0.0</Text>
       </ScrollView>
-
-      <BottomNav activeTab="profile" onTabChange={() => {}} />
     </View>
   );
 }

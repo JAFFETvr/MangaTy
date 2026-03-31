@@ -6,7 +6,6 @@ import { COLORS, TYPOGRAPHY } from '@/src/core/theme';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { FavoritesViewModel } from '@/src/features/favorites/presentation';
 import { MangaCard } from '@/src/features/manga/presentation/components';
-import { BottomNav } from '@/src/shared/components';
 import { useMVVM, useStateFlow } from '@/src/shared/hooks';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -61,7 +60,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 8,
-    paddingBottom: 90,
+    paddingBottom: 20,
     paddingTop: 16,
   },
 });
@@ -119,8 +118,6 @@ export default function FavoritesScreen() {
           scrollEnabled={true}
         />
       )}
-
-      <BottomNav activeTab="favorites" onTabChange={() => {}} />
     </View>
   );
 }

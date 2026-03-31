@@ -6,7 +6,7 @@ import { COLORS } from '@/src/core/theme';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { HomeViewModel } from '@/src/features/manga/presentation';
 import { MangaCard } from '@/src/features/manga/presentation/components';
-import { BottomNav, SearchBar, TopBar } from '@/src/shared/components';
+import { SearchBar, TopBar } from '@/src/shared/components';
 import { useMVVM, useStateFlow } from '@/src/shared/hooks';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 8,
-    paddingBottom: 80,
+    paddingBottom: 20,
   },
   grid: {
     flexDirection: 'row',
@@ -80,7 +80,6 @@ export default function HomeScreen() {
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={COLORS.pink} />
         </View>
-        <BottomNav activeTab="home" onTabChange={() => {}} />
       </View>
     );
   }
@@ -105,8 +104,6 @@ export default function HomeScreen() {
       />
 
       {state.error && <Text style={styles.error}>{state.error}</Text>}
-
-      <BottomNav activeTab="home" onTabChange={() => {}} />
     </View>
   );
 }
