@@ -28,3 +28,8 @@ export class Logout {
     return this.repository.logout();
   }
 }
+
+// Export new use cases
+export * from './SpendCoins';
+export * from './ValidateUserBalance';
+export * from './GetUserCoinBalance';

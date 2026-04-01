@@ -1,15 +1,17 @@
 /**
- * MangaDetailScreen - Modal de detalle de manga
+ * MangaDetailScreen - Modal de detalle de manga con sistema de desbloqueo
  */
 
 import { COLORS, TYPOGRAPHY } from '@/src/core/theme';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { MangaDetailViewModel } from '@/src/features/manga/presentation';
-import { ChapterItem } from '@/src/features/manga/presentation/components';
+import { MangaChaptersSection } from '@/src/features/unlocked-chapters/presentation';
+import { CreatorBadge } from '@/src/features/creators/presentation';
 import { Tag } from '@/src/shared/components';
 import { useMVVM, useStateFlow } from '@/src/shared/hooks';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -19,6 +21,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { Creator } from '@/src/features/creators/domain/entities';
+import { GetCreatorById } from '@/src/features/creators/domain/use-cases';
+
+const MOCK_USER_ID = 'user-1';
+const INITIAL_BALANCE = 150; // Mock balance
 
 const styles = StyleSheet.create({
   container: {
@@ -124,30 +131,40 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     lineHeight: 24,
   },
-  chaptersHeader: {
+  balanceBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    backgroundColor: '#FFD6EC',
+    paddingVertical: 10,
     paddingHorizontal: 16,
+    marginHorizontal: 16,
     marginBottom: 8,
+    borderRadius: 12,
   },
-  chaptersTitle: {
-    fontWeight: TYPOGRAPHY.weights.extrabold,
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.text,
+  balanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  coinBadge: {
-    backgroundColor: COLORS.yellow,
-    borderRadius: 20,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
+  balanceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.pink,
+  },
+  buyButton: {
+    backgroundColor: COLORS.pink,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: '#333',
+  },
+  buyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
   },
   loading: {
     flex: 1,
@@ -163,6 +180,8 @@ export default function MangaDetailScreen() {
     DIKeys.MANGA_DETAIL_VIEW_MODEL
   );
   const state = useStateFlow(viewModel.state$);
+  const [userBalance, setUserBalance] = useState(INITIAL_BALANCE);
+  const [creator, setCreator] = useState<Creator | null>(null);
 
   useMVVM(
     async () => {
@@ -172,6 +191,30 @@ export default function MangaDetailScreen() {
     },
     undefined
   );
+
+  // Load creator when manga loads
+  useEffect(() => {
+    const loadCreator = async () => {
+      if (state.manga?.creatorId) {
+        try {
+          const getCreatorById = serviceLocator.get<GetCreatorById>(DIKeys.GET_CREATOR_BY_ID);
+          const creatorData = await getCreatorById.execute(state.manga.creatorId);
+          setCreator(creatorData);
+        } catch (error) {
+          console.log('Error loading creator:', error);
+        }
+      }
+    };
+    loadCreator();
+  }, [state.manga?.creatorId]);
+
+  const handleBalanceChange = (newBalance: number) => {
+    setUserBalance(newBalance);
+  };
+
+  const handleBuyCoins = () => {
+    router.push('/coin-store');
+  };
 
   if (state.isLoading || !state.manga) {
     return (
@@ -210,17 +253,20 @@ export default function MangaDetailScreen() {
           </View>
         </View>
 
-        {/* Authors */}
+        {/* Creator Badge */}
         <View style={styles.content}>
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Autor(es)</Text>
-            <View style={styles.authorsRow}>
-              {manga.authors.map((author: any) => (
-                <Text key={author} style={styles.author}>
-                  {author}
-                </Text>
-              ))}
-            </View>
+            <Text style={styles.sectionLabel}>Creador</Text>
+            {creator ? (
+              <CreatorBadge 
+                creator={creator} 
+                onPress={() => router.push(`/creators`)} 
+              />
+            ) : (
+              <View style={styles.authorsRow}>
+                <Text style={styles.author}>{manga.creatorId}</Text>
+              </View>
+            )}
           </View>
 
           {/* Description */}
@@ -230,21 +276,28 @@ export default function MangaDetailScreen() {
           </View>
         </View>
 
-        {/* Chapters */}
-        <View style={styles.chaptersHeader}>
-          <Text style={styles.chaptersTitle}>Capítulos</Text>
-          <Text style={styles.coinBadge}>💰 50</Text>
+        {/* Balance Bar */}
+        <View style={styles.balanceBar}>
+          <View style={styles.balanceLeft}>
+            <Ionicons name="logo-bitcoin" size={18} color="#F5C518" />
+            <Text style={styles.balanceText}>{userBalance} monedas</Text>
+          </View>
+          <TouchableOpacity style={styles.buyButton} onPress={handleBuyCoins}>
+            <Ionicons name="add-circle" size={14} color="#fff" />
+            <Text style={styles.buyButtonText}>Comprar</Text>
+          </TouchableOpacity>
         </View>
 
-        {manga.chaptersData.map((chapter: any) => (
-          <ChapterItem
-            key={chapter.number}
-            chapter={chapter}
-            onPress={() => {
-              // Handle chapter open
-            }}
+        {/* Chapters with Unlock */}
+        <View style={{ paddingHorizontal: 16 }}>
+          <MangaChaptersSection
+            manga={manga}
+            chapters={manga.chaptersData}
+            userId={MOCK_USER_ID}
+            userBalance={userBalance}
+            onBalanceChange={handleBalanceChange}
           />
-        ))}
+        </View>
 
         <View style={{ height: 20 }} />
       </ScrollView>

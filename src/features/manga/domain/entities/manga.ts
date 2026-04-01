@@ -11,7 +11,7 @@ export interface Manga {
   tags: TagCategory[];
   chapters: number;
   cover: string;
-  authors: string[];
+  creatorId: string;  // FK to Creator
   description: string;
   chaptersData: Chapter[];
 }
