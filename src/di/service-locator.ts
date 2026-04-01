@@ -73,6 +73,10 @@ export const DIKeys = {
   COIN_REPOSITORY: 'coinRepository',
   TRANSACTION_REPOSITORY: 'transactionRepository',
   USER_REPOSITORY: 'userRepository',
+  CREATOR_REPOSITORY: 'creatorRepository',
+  UNLOCKED_CHAPTER_REPOSITORY: 'unlockedChapterRepository',
+  EARNINGS_REPOSITORY: 'earningsRepository',
+  WALLET_REPOSITORY: 'walletRepository',
 
   // DataSources
   MANGA_DATA_SOURCE: 'mangaDataSource',
@@ -89,4 +93,40 @@ export const DIKeys = {
   COIN_STORE_VIEW_MODEL: 'coinStoreViewModel',
   COIN_BALANCE_VIEW_MODEL: 'coinBalanceViewModel',
   PROFILE_VIEW_MODEL: 'profileViewModel',
+  UNLOCK_CHAPTER_VIEW_MODEL: 'unlockChapterViewModel',
+  CREATOR_VIEW_MODEL: 'creatorViewModel',
+  EARNINGS_VIEW_MODEL: 'earningsViewModel',
+  WALLET_VIEW_MODEL: 'walletViewModel',
+
+  // User Use Cases
+  SPEND_COINS: 'spendCoins',
+  VALIDATE_USER_BALANCE: 'validateUserBalance',
+  GET_USER_COIN_BALANCE: 'getUserCoinBalance',
+
+  // Creator Use Cases
+  GET_CREATOR_BY_ID: 'getCreatorById',
+  GET_CREATOR_MANGAS: 'getCreatorMangas',
+  GET_CREATOR_EARNINGS: 'getCreatorEarnings',
+  GET_ALL_CREATORS: 'getAllCreators',
+
+  // Unlocked Chapters Use Cases
+  UNLOCK_CHAPTER_WITH_COINS: 'unlockChapterWithCoins',
+  UNLOCK_CHAPTER_WITH_AD: 'unlockChapterWithAd',
+  CHECK_CHAPTER_UNLOCKED: 'checkChapterUnlocked',
+  GET_UNLOCKED_CHAPTERS: 'getUnlockedChapters',
+
+  // Earnings Use Cases
+  RECORD_CHAPTER_PURCHASE: 'recordChapterPurchase',
+  GET_CREATOR_WALLET: 'getCreatorWallet',
+  CALCULATE_PENDING_PAYOUT: 'calculatePendingPayout',
+  GET_CREATOR_EARNING_STATS: 'getCreatorEarningStats',
+
+  // Wallet Use Cases
+  GET_TRANSACTION_HISTORY: 'getTransactionHistory',
+  GET_WALLET_TRANSACTIONS: 'getWalletTransactions',
+  GET_WALLET_BALANCE: 'getWalletBalance',
+  GET_TRANSACTION_STATS: 'getTransactionStats',
+
+  // Orchestrators
+  UNLOCK_CHAPTER_ORCHESTRATOR: 'unlockChapterOrchestrator',
 } as const;

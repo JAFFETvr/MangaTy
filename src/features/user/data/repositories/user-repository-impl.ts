@@ -17,6 +17,18 @@ export class UserRepositoryImpl implements IUserRepository {
     return this.dataSource.updateUser(updates);
   }
 
+  async getUserCoinBalance(): Promise<number> {
+    return this.dataSource.getUserCoinBalance();
+  }
+
+  async addCoins(amount: number): Promise<number> {
+    return this.dataSource.addCoins(amount);
+  }
+
+  async spendCoins(amount: number): Promise<number> {
+    return this.dataSource.spendCoins(amount);
+  }
+
   async logout(): Promise<void> {
     return this.dataSource.logout();
   }

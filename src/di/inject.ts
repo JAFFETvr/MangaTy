@@ -96,7 +96,7 @@ export function setupDependencies(): void {
     // User feature
     const { UserLocalDataSource } = require('@/src/features/user/data/datasources/user-local-datasource');
     const { UserRepositoryImpl } = require('@/src/features/user/data/repositories/user-repository-impl');
-    const { GetUser, UpdateUser, Logout } = require('@/src/features/user/domain/use-cases');
+    const { GetUser, UpdateUser, Logout, SpendCoins, ValidateUserBalance, GetUserCoinBalance } = require('@/src/features/user/domain/use-cases');
     const { ProfileViewModel } = require('@/src/features/user/presentation');
 
     const userDataSource = new UserLocalDataSource();
@@ -105,11 +105,107 @@ export function setupDependencies(): void {
     const getUser = new GetUser(userRepository);
     const updateUser = new UpdateUser(userRepository);
     const logout = new Logout(userRepository);
+    const spendCoins = new SpendCoins(userRepository);
+    const validateUserBalance = new ValidateUserBalance(userRepository);
+    const getUserCoinBalance = new GetUserCoinBalance(userRepository);
 
     const profileViewModel = new ProfileViewModel(getUser, updateUser, logout);
 
     serviceLocator.registerSingleton(DIKeys.USER_REPOSITORY, () => userRepository);
     serviceLocator.registerSingleton(DIKeys.PROFILE_VIEW_MODEL, () => profileViewModel);
+    serviceLocator.registerSingleton(DIKeys.SPEND_COINS, () => spendCoins);
+    serviceLocator.registerSingleton(DIKeys.VALIDATE_USER_BALANCE, () => validateUserBalance);
+    serviceLocator.registerSingleton(DIKeys.GET_USER_COIN_BALANCE, () => getUserCoinBalance);
+
+    // Creators feature
+    const { CreatorLocalDataSource } = require('@/src/features/creators/data/datasources/CreatorLocalDataSource');
+    const { CreatorRepository } = require('@/src/features/creators/data/repositories/CreatorRepository');
+    const { GetCreatorById, GetCreatorMangas, GetCreatorEarnings, GetAllCreators } = require('@/src/features/creators/domain/use-cases');
+
+    const creatorDataSource = new CreatorLocalDataSource();
+    const creatorRepository = new CreatorRepository(creatorDataSource);
+
+    const getCreatorById = new GetCreatorById(creatorRepository);
+    const getCreatorMangas = new GetCreatorMangas(creatorRepository);
+    const getCreatorEarnings = new GetCreatorEarnings(creatorRepository);
+    const getAllCreators = new GetAllCreators(creatorRepository);
+
+    serviceLocator.registerSingleton(DIKeys.CREATOR_REPOSITORY, () => creatorRepository);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_BY_ID, () => getCreatorById);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_MANGAS, () => getCreatorMangas);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_EARNINGS, () => getCreatorEarnings);
+    serviceLocator.registerSingleton(DIKeys.GET_ALL_CREATORS, () => getAllCreators);
+
+    // Unlocked Chapters feature
+    const { UnlockedChapterLocalDataSource } = require('@/src/features/unlocked-chapters/data/datasources/UnlockedChapterLocalDataSource');
+    const { UnlockedChapterRepository } = require('@/src/features/unlocked-chapters/data/repositories/UnlockedChapterRepository');
+    const { UnlockChapterWithCoins, UnlockChapterWithAd, CheckChapterUnlocked, GetUnlockedChapters, UnlockChapterOrchestrator } = require('@/src/features/unlocked-chapters/domain/use-cases');
+
+    const unlockedChapterDataSource = new UnlockedChapterLocalDataSource();
+    const unlockedChapterRepository = new UnlockedChapterRepository(unlockedChapterDataSource);
+
+    const unlockChapterWithCoins = new UnlockChapterWithCoins(unlockedChapterRepository);
+    const unlockChapterWithAd = new UnlockChapterWithAd(unlockedChapterRepository);
+    const checkChapterUnlocked = new CheckChapterUnlocked(unlockedChapterRepository);
+    const getUnlockedChapters = new GetUnlockedChapters(unlockedChapterRepository);
+
+    serviceLocator.registerSingleton(DIKeys.UNLOCKED_CHAPTER_REPOSITORY, () => unlockedChapterRepository);
+    serviceLocator.registerSingleton(DIKeys.UNLOCK_CHAPTER_WITH_COINS, () => unlockChapterWithCoins);
+    serviceLocator.registerSingleton(DIKeys.UNLOCK_CHAPTER_WITH_AD, () => unlockChapterWithAd);
+    serviceLocator.registerSingleton(DIKeys.CHECK_CHAPTER_UNLOCKED, () => checkChapterUnlocked);
+    serviceLocator.registerSingleton(DIKeys.GET_UNLOCKED_CHAPTERS, () => getUnlockedChapters);
+
+    // Earnings feature
+    const { EarningsLocalDataSource } = require('@/src/features/earnings/data/datasources/EarningsLocalDataSource');
+    const { EarningsRepository } = require('@/src/features/earnings/data/repositories/EarningsRepository');
+    const { RecordChapterPurchase, GetCreatorWallet, CalculatePendingPayout, GetCreatorEarningStats } = require('@/src/features/earnings/domain/use-cases');
+    const { GetCreatorEarnings: GetCreatorEarningsUseCase } = require('@/src/features/earnings/domain/use-cases');
+
+    const earningsDataSource = new EarningsLocalDataSource();
+    const earningsRepository = new EarningsRepository(earningsDataSource);
+
+    const recordChapterPurchase = new RecordChapterPurchase(earningsRepository);
+    const getCreatorWallet = new GetCreatorWallet(earningsRepository);
+    const calculatePendingPayout = new CalculatePendingPayout(earningsRepository);
+    const getCreatorEarningStats = new GetCreatorEarningStats(earningsRepository);
+    const getCreatorEarningsUseCase = new GetCreatorEarningsUseCase(earningsRepository);
+
+    serviceLocator.registerSingleton(DIKeys.EARNINGS_REPOSITORY, () => earningsRepository);
+    serviceLocator.registerSingleton(DIKeys.RECORD_CHAPTER_PURCHASE, () => recordChapterPurchase);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_WALLET, () => getCreatorWallet);
+    serviceLocator.registerSingleton(DIKeys.CALCULATE_PENDING_PAYOUT, () => calculatePendingPayout);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_EARNING_STATS, () => getCreatorEarningStats);
+    serviceLocator.registerSingleton(DIKeys.GET_CREATOR_EARNINGS, () => getCreatorEarningsUseCase);
+
+    // Wallet feature
+    const { WalletLocalDataSource } = require('@/src/features/wallet/data/datasources/WalletLocalDataSource');
+    const { WalletRepository } = require('@/src/features/wallet/data/repositories/WalletRepository');
+    const { GetTransactionHistory, GetWalletTransactions, GetWalletBalance, GetTransactionStats } = require('@/src/features/wallet/domain/use-cases');
+
+    const walletDataSource = new WalletLocalDataSource();
+    const walletRepository = new WalletRepository(walletDataSource);
+
+    const getTransactionHistory = new GetTransactionHistory(walletRepository);
+    const getWalletTransactions = new GetWalletTransactions(walletRepository);
+    const getWalletBalance = new GetWalletBalance(userRepository);
+    const getTransactionStats = new GetTransactionStats(walletRepository);
+
+    serviceLocator.registerSingleton(DIKeys.WALLET_REPOSITORY, () => walletRepository);
+    serviceLocator.registerSingleton(DIKeys.GET_TRANSACTION_HISTORY, () => getTransactionHistory);
+    serviceLocator.registerSingleton(DIKeys.GET_WALLET_TRANSACTIONS, () => getWalletTransactions);
+    serviceLocator.registerSingleton(DIKeys.GET_WALLET_BALANCE, () => getWalletBalance);
+    serviceLocator.registerSingleton(DIKeys.GET_TRANSACTION_STATS, () => getTransactionStats);
+
+    // Unlock Chapter Orchestrator - El corazón del negocio
+    const unlockChapterOrchestrator = new UnlockChapterOrchestrator(
+      userRepository,
+      unlockedChapterRepository,
+      earningsRepository,
+      walletRepository,
+      creatorRepository
+    );
+
+    serviceLocator.registerSingleton(DIKeys.UNLOCK_CHAPTER_ORCHESTRATOR, () => unlockChapterOrchestrator);
 
     initialized = true;
   } catch (error) {

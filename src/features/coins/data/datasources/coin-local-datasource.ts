@@ -8,11 +8,51 @@ export class CoinLocalDataSource {
   private balance: number = 50;
 
   private packages: CoinPackage[] = [
-    { id: '50', coins: 50, bonus: 0, price: '0.9', popular: false, best: false },
-    { id: '120', coins: 120, bonus: 30, price: '1.9', popular: false, best: false },
-    { id: '300', coins: 300, bonus: 50, price: '4.99', popular: true, best: false },
-    { id: '1500', coins: 1500, bonus: 500, price: '19.99', popular: false, best: true },
-    { id: '650', coins: 650, bonus: 180, price: '8.9', popular: false, best: false },
+    { 
+      id: '100', 
+      coins: 100, 
+      bonus: 0, 
+      price: '$20', 
+      priceMXN: 20, 
+      popular: false, 
+      best: false 
+    },
+    { 
+      id: '250', 
+      coins: 250, 
+      bonus: 30, 
+      price: '$45', 
+      priceMXN: 45, 
+      popular: false, 
+      best: false 
+    },
+    { 
+      id: '600', 
+      coins: 600, 
+      bonus: 100, 
+      price: '$100', 
+      priceMXN: 100, 
+      popular: true, 
+      best: false 
+    },
+    { 
+      id: '1300', 
+      coins: 1300, 
+      bonus: 300, 
+      price: '$200', 
+      priceMXN: 200, 
+      popular: false, 
+      best: false 
+    },
+    { 
+      id: '3500', 
+      coins: 3500, 
+      bonus: 1000, 
+      price: '$500', 
+      priceMXN: 500, 
+      popular: false, 
+      best: true 
+    },
   ];
 
   async getBalance(): Promise<number> {

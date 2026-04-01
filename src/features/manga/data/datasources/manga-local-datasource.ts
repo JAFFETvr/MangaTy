@@ -13,7 +13,7 @@ export class MangaLocalDataSource {
       tags: ['Romance', 'Drama'],
       chapters: 156,
       cover: 'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=200&h=260&fit=crop',
-      authors: ['Yuki Tanaka', 'Hiro Matsumoto'],
+      creatorId: 'creator-1',  // Yuki Tanaka
       description:
         'Una historia emotiva sobre una joven que descubre un antiguo diario que revela secretos del pasado de su familia y un amor que trasciende el tiempo.',
       chaptersData: [
@@ -31,7 +31,7 @@ export class MangaLocalDataSource {
       tags: ['Acción', 'Fantasía'],
       chapters: 203,
       cover: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&h=260&fit=crop',
-      authors: ['Kenta Mori'],
+      creatorId: 'creator-2',  // Kenta Mori
       description:
         'Una saga épica de cazadores de demonios que protegen a la humanidad en un Japón de la era Taisho lleno de criaturas oscuras.',
       chaptersData: [
@@ -47,7 +47,7 @@ export class MangaLocalDataSource {
       tags: ['Misterio', 'Thriller'],
       chapters: 124,
       cover: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=260&fit=crop',
-      authors: ['Rin Yoshida'],
+      creatorId: 'creator-3',  // Rin Yoshida
       description:
         'Un detective en Tokio investiga crímenes imposibles que parecen estar conectados con el mundo de las sombras.',
       chaptersData: [
@@ -61,7 +61,7 @@ export class MangaLocalDataSource {
       tags: ['Aventura', 'Fantasía'],
       chapters: 189,
       cover: 'https://images.unsplash.com/photo-1614728263952-84ea256f9d4e?w=200&h=260&fit=crop',
-      authors: ['Sora Hayashi'],
+      creatorId: 'creator-4',  // Sora Hayashi
       description:
         'Un joven descubre que es el último heredero del trono del dragón y debe reunir los artefactos antiguos para salvar su reino.',
       chaptersData: [

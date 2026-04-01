@@ -18,6 +18,45 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="manga-detail" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: false,
+          }} 
+        />
+        <Stack.Screen 
+          name="coin-store" 
+          options={{ 
+            presentation: 'modal',
+            title: 'Tienda de Monedas',
+            headerShown: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="wallet" 
+          options={{ 
+            presentation: 'card',
+            title: 'Mi Wallet',
+            headerShown: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="creators" 
+          options={{ 
+            presentation: 'card',
+            title: 'Creadores',
+            headerShown: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="creator-dashboard" 
+          options={{ 
+            presentation: 'card',
+            title: 'Dashboard',
+            headerShown: false,
+          }} 
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
