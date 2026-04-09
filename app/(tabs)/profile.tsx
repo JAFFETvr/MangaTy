@@ -2,173 +2,211 @@
  * ProfileScreen - Tab 3 - Perfil de usuario
  */
 
-import { COLORS, TYPOGRAPHY } from '@/src/core/theme';
+import { COLORS } from '@/src/core/theme';
+import { TYPOGRAPHY } from '@/src/core/theme/typography';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { ProfileViewModel } from '@/src/features/user/presentation';
 import { useMVVM, useStateFlow } from '@/src/shared/hooks';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FAFAFA',
   },
-  heroBg: {
-    backgroundColor: COLORS.pink,
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    gap: 6,
+  headerSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: 4,
-  },
-  userName: {
-    color: '#fff',
-    fontWeight: TYPOGRAPHY.weights.extrabold,
-    fontSize: TYPOGRAPHY.sizes['2xl'],
-    marginTop: 4,
-  },
-  userEmail: {
-    color: 'rgba(255, 255, 255, 0.75)',
-    fontSize: TYPOGRAPHY.sizes.xs,
-  },
-  memberBadge: {
-    backgroundColor: COLORS.yellow,
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 14,
-    marginTop: 8,
+  userHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 12,
+    marginBottom: 16,
   },
-  memberBadgeText: {
-    color: '#333',
+  avatar: {
+    width: 60,
+    height: 60,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: TYPOGRAPHY.sizes.base,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  userStatus: {
     fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.extrabold,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  settingsIcon: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  balanceCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  balanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  balanceIcon: {
+    fontSize: 24,
+  },
+  balanceContent: {
+    flex: 1,
+  },
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: '500',
+  },
+  balanceAmount: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  buyButton: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  buyButtonText: {
+    color: '#fff',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
-    paddingBottom: 20,
+    paddingTop: 16,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    gap: 10,
+    gap: 8,
+    marginBottom: 16,
   },
   statBox: {
     backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     flex: 1,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   statNum: {
-    fontWeight: TYPOGRAPHY.weights.black,
-    fontSize: TYPOGRAPHY.sizes['3xl'],
-    color: COLORS.text,
+    fontWeight: '700',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    color: COLORS.textDark,
   },
   statLabel: {
-    color: COLORS.textMuted,
+    color: COLORS.textLight,
     fontSize: TYPOGRAPHY.sizes.xs,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontWeight: TYPOGRAPHY.weights.extrabold,
-    fontSize: TYPOGRAPHY.sizes.lg,
-    color: COLORS.text,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
     marginTop: 4,
   },
-  menuSection: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+  sectionContainer: {
     marginHorizontal: 16,
-    marginVertical: 8,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    marginBottom: 24,
   },
-  menuItem: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    fontSize: TYPOGRAPHY.sizes.base,
+    color: COLORS.textDark,
+  },
+  viewAllText: {
+    color: COLORS.primary,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: '600',
+  },
+  webcomicsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  menuItemLast: {
-    borderBottomWidth: 0,
-  },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  menuIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuLabel: {
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.text,
-  },
-  menuSub: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.textMuted,
-    marginTop: 1,
-  },
-  logoutBtn: {
-    marginHorizontal: 16,
-    marginVertical: 16,
-    backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: COLORS.pink,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    borderColor: COLORS.primary,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  webcomicsIcon: {
+    marginRight: 12,
+  },
+  webcomicsContent: {
+    flex: 1,
+  },
+  webcomicsTitle: {
+    color: '#000',
+    fontSize: TYPOGRAPHY.sizes.base,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  webcomicsSubtitle: {
+    color: COLORS.textLight,
+    fontSize: TYPOGRAPHY.sizes.sm,
+  },
+  webcomicsArrow: {
+    color: '#fff',
+  },
+  mangaGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
   },
-  logoutText: {
-    color: COLORS.pink,
-    fontWeight: TYPOGRAPHY.weights.extrabold,
-    fontSize: TYPOGRAPHY.sizes.base,
+  mangaCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  version: {
-    textAlign: 'center',
-    color: COLORS.textMuted,
+  mangaImage: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#E0E0E0',
+  },
+  mangaTitle: {
     fontSize: TYPOGRAPHY.sizes.xs,
-    paddingBottom: 16,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    textAlign: 'center',
   },
   loading: {
     justifyContent: 'center',
@@ -176,6 +214,18 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
 });
+
+const MOCK_READING_HISTORY = [
+  { id: 1, title: 'Sombras de Ner', cover: 'https://via.placeholder.com/100x140' },
+  { id: 2, title: 'Corazón de Oro', cover: 'https://via.placeholder.com/100x140' },
+  { id: 3, title: 'Café Medianoche', cover: 'https://via.placeholder.com/100x140' },
+];
+
+const MOCK_FAVORITES = [
+  { id: 1, title: 'Sombras de Ner', cover: 'https://via.placeholder.com/100x140' },
+  { id: 2, title: 'Academia Azul', cover: 'https://via.placeholder.com/100x140' },
+  { id: 3, title: 'Ritmo Urbano', cover: 'https://via.placeholder.com/100x140' },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -192,9 +242,8 @@ export default function ProfileScreen() {
   if (!state.user) {
     return (
       <View style={styles.container}>
-        <View style={styles.heroBg} />
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color={COLORS.pink} />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       </View>
     );
@@ -204,160 +253,118 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content}>
-        {/* Hero Section */}
-        <View style={styles.heroBg}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={36} color="#fff" />
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          <View style={styles.userHeader}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={28} color={COLORS.textLight} />
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{user.name}</Text>
+              <Text style={styles.userStatus}>Lector activo</Text>
+            </View>
+            <TouchableOpacity style={styles.settingsIcon}>
+              <Ionicons name="settings-outline" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userEmail}>{user.email}</Text>
-          <View style={styles.memberBadge}>
-            <Ionicons name="star" size={12} color="#333" />
-            <Text style={styles.memberBadgeText}>Miembro</Text>
-          </View>
+
+          {/* Balance Card */}
+          <TouchableOpacity 
+            style={styles.balanceCard}
+            onPress={() => router.push('/coin-store')}
+          >
+            <View style={styles.balanceLeft}>
+              <Text style={styles.balanceIcon}>💰</Text>
+              <View style={styles.balanceContent}>
+                <Text style={styles.balanceLabel}>Tu Balance</Text>
+                <Text style={styles.balanceAmount}>350 Monedas</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.buyButton}>
+              <Text style={styles.buyButtonText}>Comprar</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>{user.stats.mangasRead}</Text>
-            <Text style={styles.statLabel}>Mangas Leídos</Text>
+            <Text style={styles.statNum}>{user.stats?.mangasRead || 3}</Text>
+            <Text style={styles.statLabel}>Leídos</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>{user.stats.favorites}</Text>
+            <Text style={styles.statNum}>{user.stats?.favorites || 3}</Text>
             <Text style={styles.statLabel}>Favoritos</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>{user.stats.chaptersRead}</Text>
-            <Text style={styles.statLabel}>Capítulos</Text>
+            <Text style={styles.statNum}>{user.stats?.chaptersRead || 32}</Text>
+            <Text style={styles.statLabel}>Completados</Text>
           </View>
         </View>
 
-        {/* Monetization Section - NEW */}
-        <Text style={styles.sectionTitle}>Monetización</Text>
-        <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/wallet')}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FFE8D6' }]}>
-                <Ionicons name="wallet" size={20} color="#F59E0B" />
-              </View>
-              <View>
-                <Text style={styles.menuLabel}>Mi Wallet</Text>
-                <Text style={styles.menuSub}>Balance y transacciones</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/coin-store')}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#D1FAE5' }]}>
-                <Ionicons name="diamond" size={20} color="#10B981" />
-              </View>
-              <View>
-                <Text style={styles.menuLabel}>Comprar Monedas</Text>
-                <Text style={styles.menuSub}>Paquetes y ofertas</Text>
+        {/* Crear WebComic */}
+        <View style={styles.sectionContainer}>
+          <TouchableOpacity 
+            style={styles.webcomicsCard}
+            onPress={() => router.push('/my-webcomics')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="create" size={28} color={COLORS.primary} style={styles.webcomicsIcon} />
+              <View style={styles.webcomicsContent}>
+                <Text style={styles.webcomicsTitle}>Crear Webcomic</Text>
+                <Text style={styles.webcomicsSubtitle}>Comparte tu historia</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={() => router.push('/creator-dashboard')}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FFD6EC' }]}>
-                <Ionicons name="analytics" size={20} color={COLORS.pink} />
-              </View>
-              <View>
-                <Text style={styles.menuLabel}>Dashboard Creador</Text>
-                <Text style={styles.menuSub}>Ganancias y estadísticas</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* Account Section */}
-        <Text style={styles.sectionTitle}>Mi Cuenta</Text>
-        <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#E8D6FF' }]}>
-                <Ionicons name="pencil" size={20} color="#7C3AED" />
+        {/* Historial de lectura */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Historial de lectura</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>Ver todo</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.mangaGrid}>
+            {MOCK_READING_HISTORY.map((manga) => (
+              <View key={manga.id} style={styles.mangaCard}>
+                <Image
+                  source={{ uri: manga.cover }}
+                  style={styles.mangaImage}
+                  contentFit="cover"
+                />
+                <Text style={styles.mangaTitle}>{manga.title}</Text>
               </View>
-              <View>
-                <Text style={styles.menuLabel}>Editar Perfil</Text>
-                <Text style={styles.menuSub}>Nombre, foto, biografía</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#D6E4FF' }]}>
-                <Ionicons name="mail" size={20} color="#2563EB" />
-              </View>
-              <View>
-                <Text style={styles.menuLabel}>Email</Text>
-                <Text style={styles.menuSub}>{user.email}</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#F3F4F6' }]}>
-                <Ionicons name="settings" size={20} color="#6B7280" />
-              </View>
-              <View>
-                <Text style={styles.menuLabel}>Configuración</Text>
-                <Text style={styles.menuSub}>Notificaciones, privacidad</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Support Section */}
-        <Text style={styles.sectionTitle}>Soporte</Text>
-        <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="help-circle" size={20} color="#3B82F6" />
+        {/* Mis favoritos */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Mis favoritos</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>Ver todo</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.mangaGrid}>
+            {MOCK_FAVORITES.map((manga) => (
+              <View key={manga.id} style={styles.mangaCard}>
+                <Image
+                  source={{ uri: manga.cover }}
+                  style={styles.mangaImage}
+                  contentFit="cover"
+                />
+                <Text style={styles.mangaTitle}>{manga.title}</Text>
               </View>
-              <Text style={styles.menuLabel}>Centro de Ayuda</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="document-text" size={20} color="#D97706" />
-              </View>
-              <Text style={styles.menuLabel}>Términos y Condiciones</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]}>
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="shield-checkmark" size={20} color="#059669" />
-              </View>
-              <Text style={styles.menuLabel}>Política de Privacidad</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => viewModel.performLogout()}
-        >
-          <Ionicons name="log-out-outline" size={22} color={COLORS.pink} />
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.version}>Versión 1.0.0</Text>
+        <View style={{ height: 30 }} />
       </ScrollView>
     </View>
   );

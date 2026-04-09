@@ -19,6 +19,34 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen 
+          name="login" 
+          options={{ 
+            headerShown: false,
+            animationEnabled: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="register" 
+          options={{ 
+            headerShown: false,
+            animationEnabled: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="my-webcomics" 
+          options={{ 
+            headerShown: false,
+            animationEnabled: true,
+          }} 
+        />
+        <Stack.Screen 
+          name="create-webcomic" 
+          options={{ 
+            headerShown: false,
+            animationEnabled: true,
+          }} 
+        />
+        <Stack.Screen 
           name="manga-detail" 
           options={{ 
             presentation: 'modal',

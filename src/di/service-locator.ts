@@ -77,6 +77,8 @@ export const DIKeys = {
   UNLOCKED_CHAPTER_REPOSITORY: 'unlockedChapterRepository',
   EARNINGS_REPOSITORY: 'earningsRepository',
   WALLET_REPOSITORY: 'walletRepository',
+  LOGIN_REPOSITORY: 'loginRepository',
+  REGISTER_REPOSITORY: 'registerRepository',
 
   // DataSources
   MANGA_DATA_SOURCE: 'mangaDataSource',
@@ -97,6 +99,8 @@ export const DIKeys = {
   CREATOR_VIEW_MODEL: 'creatorViewModel',
   EARNINGS_VIEW_MODEL: 'earningsViewModel',
   WALLET_VIEW_MODEL: 'walletViewModel',
+  LOGIN_VIEW_MODEL: 'loginViewModel',
+  REGISTER_VIEW_MODEL: 'registerViewModel',
 
   // User Use Cases
   SPEND_COINS: 'spendCoins',

@@ -196,6 +196,36 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.GET_WALLET_BALANCE, () => getWalletBalance);
     serviceLocator.registerSingleton(DIKeys.GET_TRANSACTION_STATS, () => getTransactionStats);
 
+    // Login feature
+    const { LoginLocalDatasource, LoginRemoteDatasource } = require('@/src/features/auth/login/data/datasources/login-datasource');
+    const { LoginRepository } = require('@/src/features/auth/login/data/repositories/login-repository');
+    const { LoginUseCase } = require('@/src/features/auth/login/domain/use-cases/login-use-case');
+    const { LoginViewModel } = require('@/src/features/auth/login/presentation/view-models/login-view-model');
+
+    const loginLocalDatasource = new LoginLocalDatasource();
+    const loginRemoteDatasource = new LoginRemoteDatasource();
+    const loginRepository = new LoginRepository(loginRemoteDatasource, loginLocalDatasource);
+    const loginUseCase = new LoginUseCase(loginRepository);
+    const loginViewModel = new LoginViewModel(loginUseCase);
+
+    serviceLocator.registerSingleton(DIKeys.LOGIN_REPOSITORY, () => loginRepository);
+    serviceLocator.registerSingleton(DIKeys.LOGIN_VIEW_MODEL, () => loginViewModel);
+
+    // Register feature
+    const { RegisterLocalDatasource, RegisterRemoteDatasource } = require('@/src/features/auth/register/data/datasources/register-datasource');
+    const { RegisterRepository } = require('@/src/features/auth/register/data/repositories/register-repository');
+    const { RegisterUseCase } = require('@/src/features/auth/register/domain/use-cases/register-use-case');
+    const { RegisterViewModel } = require('@/src/features/auth/register/presentation/view-models/register-view-model');
+
+    const registerLocalDatasource = new RegisterLocalDatasource();
+    const registerRemoteDatasource = new RegisterRemoteDatasource();
+    const registerRepository = new RegisterRepository(registerRemoteDatasource, registerLocalDatasource);
+    const registerUseCase = new RegisterUseCase(registerRepository);
+    const registerViewModel = new RegisterViewModel(registerUseCase);
+
+    serviceLocator.registerSingleton(DIKeys.REGISTER_REPOSITORY, () => registerRepository);
+    serviceLocator.registerSingleton(DIKeys.REGISTER_VIEW_MODEL, () => registerViewModel);
+
     // Unlock Chapter Orchestrator - El corazón del negocio
     const unlockChapterOrchestrator = new UnlockChapterOrchestrator(
       userRepository,
