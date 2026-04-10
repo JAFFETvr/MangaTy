@@ -85,6 +85,7 @@ export const DIKeys = {
   FAVORITE_DATA_SOURCE: 'favoriteDataSource',
   HISTORY_DATA_SOURCE: 'historyDataSource',
   COIN_DATA_SOURCE: 'coinDataSource',
+  COIN_REMOTE_DATA_SOURCE: 'coinRemoteDataSource',
   USER_DATA_SOURCE: 'userDataSource',
 
   // ViewModels
@@ -106,6 +107,7 @@ export const DIKeys = {
   SPEND_COINS: 'spendCoins',
   VALIDATE_USER_BALANCE: 'validateUserBalance',
   GET_USER_COIN_BALANCE: 'getUserCoinBalance',
+  CREATE_CHECKOUT: 'createCheckout',
 
   // Creator Use Cases
   GET_CREATOR_BY_ID: 'getCreatorById',

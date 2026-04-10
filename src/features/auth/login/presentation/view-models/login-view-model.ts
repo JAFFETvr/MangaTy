@@ -1,5 +1,8 @@
 import { StateFlow } from '@/src/shared/hooks/use-state-flow';
 import { LoginUseCase } from '../../domain/use-cases/login-use-case';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const STORAGE_KEY_EMAIL = '@mangaty_email';
 
 export interface LoginViewModelState {
   isLoading: boolean;
@@ -36,6 +39,9 @@ export class LoginViewModel {
         email,
         password,
       });
+
+      // Persistir el email para mostrarlo en el perfil/configuración
+      await AsyncStorage.setItem(STORAGE_KEY_EMAIL, email);
 
       this._state.setValue({
         isLoading: false,

@@ -4,6 +4,8 @@
 
 export const COLORS = {
   // Primary brand colors
+  primary: '#D8708E',
+  primaryLight: '#F6E9EB',
   pink: '#E91E8C',
   pinkLight: '#F06292',
   pinkDark: '#C2185B',
@@ -15,6 +17,8 @@ export const COLORS = {
   background: '#FAFAFA',
   card: '#FFFFFF',
   text: '#1A1A2E',
+  textDark: '#1A1A2E',
+  textLight: '#888888',
   textMuted: '#888888',
   border: '#F0F0F0',
 

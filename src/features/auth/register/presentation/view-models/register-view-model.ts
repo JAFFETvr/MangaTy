@@ -1,5 +1,9 @@
 import { StateFlow } from '@/src/shared/hooks/use-state-flow';
 import { RegisterUseCase } from '../../domain/use-cases/register-use-case';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
+
+export const STORAGE_KEY_USERNAME = '@mangaty_username';
 
 export interface RegisterViewModelState {
   isLoading: boolean;
@@ -37,6 +41,10 @@ export class RegisterViewModel {
         email,
         password,
       });
+
+      // Persistir username y email para el perfil
+      await AsyncStorage.setItem(STORAGE_KEY_USERNAME, username);
+      await AsyncStorage.setItem(STORAGE_KEY_EMAIL, email);
 
       this._state.setValue({
         isLoading: false,

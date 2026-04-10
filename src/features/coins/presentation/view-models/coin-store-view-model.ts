@@ -4,7 +4,7 @@
 
 import { StateFlow } from '@/src/shared/hooks';
 import { CoinPackage } from '../../domain/entities';
-import { GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd } from '../../domain/use-cases';
+import { GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd, CreateCheckout } from '../../domain/use-cases';
 
 export interface CoinStoreViewModelState {
   balance: number;
@@ -28,7 +28,8 @@ export class CoinStoreViewModel {
     private getBalance: GetCoinBalance,
     private getPackages: GetCoinPackages,
     private purchaseCoins: PurchaseCoins,
-    private watchAd: WatchAd
+    private watchAd: WatchAd,
+    private createCheckout: CreateCheckout
   ) {}
 
   getState(): CoinStoreViewModelState {
@@ -66,6 +67,18 @@ export class CoinStoreViewModel {
       }
     } catch (error) {
       this.updateState({ error: 'Error al ver anuncio' });
+    }
+  }
+
+  async checkout(packageId: string): Promise<string | null> {
+    try {
+      // crypto nativo de hermes para generar uuid local y descentralizado
+      const idempotencyKey = crypto.randomUUID();
+      const checkoutUrl = await this.createCheckout.execute(packageId, idempotencyKey);
+      return checkoutUrl;
+    } catch (error) {
+      this.updateState({ error: 'Fallo al procesar el checkout con Stripe' });
+      return null;
     }
   }
 

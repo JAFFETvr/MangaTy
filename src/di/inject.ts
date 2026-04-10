@@ -76,21 +76,25 @@ export function setupDependencies(): void {
 
     // Coins feature
     const { CoinLocalDataSource } = require('@/src/features/coins/data/datasources/coin-local-datasource');
+    const { CoinRemoteDataSource } = require('@/src/features/coins/data/datasources/coin-remote-datasource');
     const { CoinRepositoryImpl } = require('@/src/features/coins/data/repositories/coin-repository-impl');
-    const { GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd } = require('@/src/features/coins/domain/use-cases');
-    const { CoinStoreViewModel } = require('@/src/features/coins/presentation');
+    const { GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd, CreateCheckout } = require('@/src/features/coins/domain/use-cases');
+    const { CoinStoreViewModel } = require('@/src/features/coins/presentation/view-models/coin-store-view-model');
 
-    const coinDataSource = new CoinLocalDataSource();
-    const coinRepository = new CoinRepositoryImpl(coinDataSource);
+    const coinLocalDataSource = new CoinLocalDataSource();
+    const coinRemoteDataSource = new CoinRemoteDataSource();
+    const coinRepository = new CoinRepositoryImpl(coinLocalDataSource, coinRemoteDataSource);
 
     const getCoinBalance = new GetCoinBalance(coinRepository);
     const getCoinPackages = new GetCoinPackages(coinRepository);
     const purchaseCoins = new PurchaseCoins(coinRepository);
     const watchAd = new WatchAd(coinRepository);
+    const createCheckout = new CreateCheckout(coinRepository);
 
-    const coinStoreViewModel = new CoinStoreViewModel(getCoinBalance, getCoinPackages, purchaseCoins, watchAd);
+    const coinStoreViewModel = new CoinStoreViewModel(getCoinBalance, getCoinPackages, purchaseCoins, watchAd, createCheckout);
 
     serviceLocator.registerSingleton(DIKeys.COIN_REPOSITORY, () => coinRepository);
+    serviceLocator.registerSingleton(DIKeys.CREATE_CHECKOUT, () => createCheckout);
     serviceLocator.registerSingleton(DIKeys.COIN_STORE_VIEW_MODEL, () => coinStoreViewModel);
 
     // User feature

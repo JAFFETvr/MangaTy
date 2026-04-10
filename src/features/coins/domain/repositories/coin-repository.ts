@@ -9,4 +9,5 @@ export interface ICoinRepository {
   getPurchasePackages(): Promise<CoinPackage[]>;
   purchaseCoins(packageId: string): Promise<boolean>;
   watchAd(): Promise<boolean>;
+  checkout(packageId: string, idempotencyKey: string): Promise<string>;
 }

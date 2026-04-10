@@ -4,23 +4,31 @@
 
 import { ICoinRepository } from '../../domain/repositories/coin-repository';
 import { CoinLocalDataSource } from '../datasources/coin-local-datasource';
+import { CoinRemoteDataSource } from '../datasources/coin-remote-datasource';
 
 export class CoinRepositoryImpl implements ICoinRepository {
-  constructor(private dataSource: CoinLocalDataSource) {}
+  constructor(
+    private localDataSource: CoinLocalDataSource,
+    private remoteDataSource: CoinRemoteDataSource
+  ) {}
 
   async getBalance(): Promise<number> {
-    return this.dataSource.getBalance();
+    return this.localDataSource.getBalance();
   }
 
   async getPurchasePackages() {
-    return this.dataSource.getPurchasePackages();
+    return this.remoteDataSource.getPackages();
   }
 
   async purchaseCoins(packageId: string): Promise<boolean> {
-    return this.dataSource.purchaseCoins(packageId);
+    return this.localDataSource.purchaseCoins(packageId);
   }
 
   async watchAd(): Promise<boolean> {
-    return this.dataSource.watchAd();
+    return this.localDataSource.watchAd();
+  }
+
+  async checkout(packageId: string, idempotencyKey: string): Promise<string> {
+    return this.remoteDataSource.checkout(packageId, idempotencyKey);
   }
 }

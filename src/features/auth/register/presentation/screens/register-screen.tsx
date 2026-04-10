@@ -1,232 +1,104 @@
-import { COLORS } from '@/src/core/theme/colors';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { AuthInput } from '@/components/ui/AuthInput';
+import { AuthButton } from '@/components/ui/AuthButton';
 import { TYPOGRAPHY } from '@/src/core/theme/typography';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
-import { Link } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
 import { RegisterViewModel } from '../view-models/register-view-model';
 
-export function RegisterScreen() {
+interface RegisterScreenProps {
+  onSwitchToLogin?: () => void;
+}
+
+export function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [viewModel] = useState(() => serviceLocator.get<RegisterViewModel>(DIKeys.REGISTER_VIEW_MODEL));
+  const [formError, setFormError] = useState<string | null>(null);
+  
+  const [viewModel] = useState<RegisterViewModel>(() => serviceLocator.get(DIKeys.REGISTER_VIEW_MODEL));
   const [state, setState] = useState(viewModel.state.getValue());
 
   useEffect(() => {
     const unsubscribe = viewModel.state.subscribe((newState) => {
       setState(newState);
+      if (newState.error) {
+        setFormError(newState.error);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
       if (newState.isRegistered) {
-        Alert.alert('Éxito', 'Cuenta creada correctamente');
-        // Navigate to home or login
+        setFormError(null);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (onSwitchToLogin) onSwitchToLogin();
       }
     });
 
     return unsubscribe;
-  }, [viewModel]);
+  }, [viewModel, onSwitchToLogin]);
 
   const handleRegister = async () => {
     if (!username || !email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      setFormError('Por favor completa todos los campos');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+    setFormError(null);
     await viewModel.register(username, email, password);
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('@/assets/logo-placeholder.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+    <View style={styles.formContainer}>
+      <AuthInput
+        icon="user"
+        placeholder="Nombre de usuario"
+        value={username}
+        onChangeText={(txt) => { setUsername(txt); setFormError(null); }}
+        autoCapitalize="none"
+        editable={!state.isLoading}
+      />
+      <AuthInput
+        icon="mail"
+        placeholder="Correo electrónico"
+        value={email}
+        onChangeText={(txt) => { setEmail(txt); setFormError(null); }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        editable={!state.isLoading}
+      />
+      <AuthInput
+        icon="lock"
+        placeholder="Contraseña"
+        value={password}
+        onChangeText={(txt) => { setPassword(txt); setFormError(null); }}
+        secureTextEntry
+        editable={!state.isLoading}
+      />
 
-        {/* Subtitle */}
-        <Text style={styles.subtitle}>Lee y apoya a creadores independientes</Text>
+      {/* Inline Error Message */}
+      {formError && (
+        <Text style={styles.inlineError}>{formError}</Text>
+      )}
 
-        {/* Tab Buttons */}
-        <View style={styles.tabsContainer}>
-          <Link href="/login" asChild>
-            <TouchableOpacity style={styles.tab}>
-              <Text style={styles.tabText}>Iniciar Sesión</Text>
-            </TouchableOpacity>
-          </Link>
-          <TouchableOpacity style={[styles.tab, styles.tabActive]}>
-            <Text style={[styles.tabText, styles.tabTextActive]}>Registrarse</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Error Message */}
-        {state.error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{state.error}</Text>
-          </View>
-        )}
-
-        {/* Username Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>👤</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre de usuario"
-            placeholderTextColor={COLORS.textLight}
-            value={username}
-            onChangeText={setUsername}
-            editable={!state.isLoading}
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/* Email Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>📧</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Correo electrónico"
-            placeholderTextColor={COLORS.textLight}
-            value={email}
-            onChangeText={setEmail}
-            editable={!state.isLoading}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/* Password Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>🔒</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor={COLORS.textLight}
-            value={password}
-            onChangeText={setPassword}
-            editable={!state.isLoading}
-            secureTextEntry
-          />
-        </View>
-
-        {/* Register Button */}
-        <TouchableOpacity
-          style={[styles.button, state.isLoading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={state.isLoading}
-        >
-          {state.isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Crear Cuenta</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <AuthButton
+        title="Crear Cuenta"
+        onPress={handleRegister}
+        isLoading={state.isLoading}
+        style={{ marginTop: 16 }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  formContainer: {
+    width: '100%',
   },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-  },
-  subtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textDark,
-    textAlign: 'center',
-    marginBottom: 32,
-    fontWeight: '500',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: COLORS.primary,
-  },
-  tabText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.textDark,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  errorContainer: {
-    backgroundColor: '#fee',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#c33',
-  },
-  errorText: {
+  inlineError: {
     color: '#c33',
-    fontSize: TYPOGRAPHY.sizes.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: TYPOGRAPHY.sizes.base,
-    color: COLORS.textDark,
-  },
-  button: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: TYPOGRAPHY.sizes.base,
-    fontWeight: '600',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    textAlign: 'center',
+    marginBottom: 10,
+    fontWeight: '500',
   },
 });

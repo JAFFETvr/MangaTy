@@ -16,6 +16,13 @@ export const Colors = {
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    authPrimary: '#D8708E',
+    authButton: '#C87889',
+    authInputBg: '#F6E9EB',
+    authInputText: '#333333',
+    authText: '#687076',
+    authActiveTabBg: '#D8708E',
+    authInactiveTabBg: '#F2E1E3',
   },
   dark: {
     text: '#ECEDEE',
@@ -24,6 +31,13 @@ export const Colors = {
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    authPrimary: '#D8708E',
+    authButton: '#C87889',
+    authInputBg: '#1e1a1b',
+    authInputText: '#FFFFFF',
+    authText: '#ECEDEE',
+    authActiveTabBg: '#D8708E',
+    authInactiveTabBg: '#362b2e',
   },
 };
 

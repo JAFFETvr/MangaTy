@@ -35,3 +35,11 @@ export class WatchAd {
     return this.repository.watchAd();
   }
 }
+
+export class CreateCheckout {
+  constructor(private repository: ICoinRepository) {}
+
+  async execute(packageId: string, idempotencyKey: string): Promise<string> {
+    return this.repository.checkout(packageId, idempotencyKey);
+  }
+}
