@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
-import { EditWebcomicViewModel, AVAILABLE_GENRES } from '../view-models/edit-webcomic-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AVAILABLE_GENRES, EditWebcomicViewModel } from '../view-models/edit-webcomic-view-model';
 
 interface Props {
   slug: string;
@@ -29,6 +29,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
   );
   const [state, setState] = useState(viewModel.getState());
 
+  // TODOS LOS HOOKS DEBEN IR AQUÍ, ANTES DE CUALQUIER EARLY RETURN
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
     viewModel.loadWebcomic(slug, mangaId);
@@ -52,6 +53,12 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
     }
   }, [state.success, state.error]);
 
+  useEffect(() => {
+    console.log('🎬 [EditInfoScreen] Montado - slug:', slug, 'mangaId:', mangaId);
+    return () => console.log('🎬 [EditInfoScreen] Desmontado');
+  }, []);
+
+  // AHORA sí puede haber early return después de todos los hooks
   if (state.isLoading && !state.manga) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -59,11 +66,6 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
       </View>
     );
   }
-
-  useEffect(() => {
-    console.log('🎬 [EditInfoScreen] Montado - slug:', slug, 'mangaId:', mangaId);
-    return () => console.log('🎬 [EditInfoScreen] Desmontado');
-  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

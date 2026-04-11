@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { AuthInput } from '@/components/ui/AuthInput';
 import { AuthButton } from '@/components/ui/AuthButton';
+import { AuthInput } from '@/components/ui/AuthInput';
 import { TYPOGRAPHY } from '@/src/core/theme/typography';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { RegisterViewModel } from '../view-models/register-view-model';
 
 interface RegisterScreenProps {

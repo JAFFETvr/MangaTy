@@ -3,12 +3,12 @@
  * Fetches user data from the backend API
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from '../../domain/entities';
 import { httpClient } from '@/src/core/http/http-client';
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
-import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from '../../domain/entities';
 
 interface WalletBalance {
   userId: string;

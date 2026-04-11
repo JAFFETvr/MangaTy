@@ -1,6 +1,6 @@
-import React from 'react';
-import { useLocalSearchParams, Stack } from 'expo-router';
 import ChapterViewerScreen from '@/src/features/creators/presentation/screens/chapter-viewer-screen';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import React from 'react';
 
 export default function ChapterViewerRoute() {
   const { id, chapterId } = useLocalSearchParams<{ id: string; chapterId: string }>();

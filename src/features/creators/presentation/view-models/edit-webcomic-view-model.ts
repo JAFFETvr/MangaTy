@@ -1,7 +1,7 @@
+import { Manga } from '@/src/features/manga/domain/entities';
+import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
 import { StateFlow } from '@/src/shared/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
-import { Manga } from '@/src/features/manga/domain/entities';
 
 export interface EditWebcomicState {
   manga: Manga | null;

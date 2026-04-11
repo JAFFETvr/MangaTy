@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, TextInput, StyleSheet, TextInputProps, TouchableOpacity, useColorScheme } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { TYPOGRAPHY } from '@/src/core/theme/typography';
+import { Feather } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 
 interface AuthInputProps extends TextInputProps {
   icon?: keyof typeof Feather.glyphMap;

@@ -1,20 +1,20 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { Feather } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-  Dimensions,
-  ActivityIndicator,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { ManageWebcomicViewModel } from '../view-models/manage-webcomic-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
 
 const { width } = Dimensions.get('window');
 
