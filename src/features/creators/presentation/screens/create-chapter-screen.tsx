@@ -1,21 +1,20 @@
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
-import { Feather } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { CreateChapterViewModel } from '../view-models/create-chapter-view-model';
 
 interface Props {
@@ -29,15 +28,16 @@ export default function CreateChapterScreen({ mangaId }: Props) {
   );
   const [state, setState] = useState(viewModel.getState());
 
-  // TODOS LOS HOOKS AL INICIO, ANTES DE CUALQUIER OTRO CÓDIGO
+  // HOOK 1: Subscribe to state changes
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
     return () => unsubscribe();
   }, [viewModel]);
 
+  // HOOK 2: Handle success
   useEffect(() => {
     if (state.success) {
-      Alert.alert('¡Éxito!', 'Capítulo publicado correctamente', [
+      Alert.alert('✅ Éxito', 'Capítulo publicado correctamente', [
         { text: 'OK', onPress: () => {
           viewModel.reset();
           router.back();
@@ -46,15 +46,15 @@ export default function CreateChapterScreen({ mangaId }: Props) {
     }
   }, [state.success]);
 
+  // HOOK 3: Handle errors
   useEffect(() => {
     if (state.error) {
-      Alert.alert('Error', state.error, [
+      Alert.alert('❌ Error', state.error, [
         { text: 'OK', onPress: () => viewModel.resetError() }
       ]);
     }
   }, [state.error]);
 
-  // AHORA las funciones y el rest del código
   const pickImages = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,32 +63,14 @@ export default function CreateChapterScreen({ mangaId }: Props) {
         quality: 0.8,
       });
 
-      if (!result.cancelled) {
-        for (const asset of result.assets || []) {
+      if (!result.cancelled && result.assets) {
+        for (const asset of result.assets) {
           if (asset.uri) {
-            try {
-              console.log('📸 Leyendo imagen:', asset.uri);
-
-              // Leer como base64
-              const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-
-              // Crear blob URL (más eficiente que data URI en web)
-              const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
-              const blobUrl = URL.createObjectURL(blob);
-
-              console.log('✅ Imagen lista:', blobUrl.substring(0, 50) + '...');
-              viewModel.addImage(blobUrl);
-            } catch (error) {
-              console.error('❌ Error procesando imagen:', error);
-              Alert.alert('Error', 'No se pudo procesar la imagen');
-            }
+            viewModel.addImage(asset.uri);
           }
         }
       }
     } catch (error) {
-      console.error('❌ Error seleccionando imágenes:', error);
       Alert.alert('Error', 'No se pudo seleccionar las imágenes');
     }
   };
@@ -128,9 +110,7 @@ export default function CreateChapterScreen({ mangaId }: Props) {
 
         {state.images.length > 0 && (
           <View style={styles.imagesContainer}>
-            <View style={styles.imagesHeader}>
-              <Text style={styles.imagesTitle}>{state.images.length} página{state.images.length !== 1 ? 's' : ''} seleccionada{state.images.length !== 1 ? 's' : ''}</Text>
-            </View>
+            <Text style={styles.imagesTitle}>{state.images.length} página{state.images.length !== 1 ? 's' : ''}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -234,13 +214,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FEEBED',
   },
-  imagesHeader: {
-    marginBottom: 12,
-  },
   imagesTitle: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#1A1A2E',
+    marginBottom: 12,
   },
   imagesList: {
     gap: 12,
