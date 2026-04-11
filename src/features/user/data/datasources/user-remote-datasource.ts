@@ -1,0 +1,82 @@
+/**
+ * User Remote DataSource
+ * Fetches user data from the backend API
+ */
+
+import { User } from '../../domain/entities';
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+
+interface WalletBalance {
+  userId: string;
+  tyCoins: number;
+}
+
+export class UserRemoteDataSource {
+  async getUser(): Promise<User | null> {
+    try {
+      const auth = await TokenStorageService.getAuth();
+      if (!auth) {
+        return null;
+      }
+
+      // Fetch wallet balance to get user's TyCoins
+      const balance = await httpClient.get<WalletBalance>('/wallet/balance');
+
+      return {
+        id: auth.userId,
+        name: auth.userId,
+        email: '',
+        coinBalance: balance.tyCoins,
+        memberSince: new Date(),
+        stats: {
+          mangasRead: 0,
+          favorites: 0,
+          chaptersRead: 0,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Error fetching user:', error);
+      return null;
+    }
+  }
+
+  async updateUser(updates: Partial<User>): Promise<User> {
+    // For now, just return the updated user
+    // In a real scenario, you'd POST to an update endpoint
+    const current = await this.getUser();
+    return { ...current, ...updates } as User;
+  }
+
+  async getUserCoinBalance(): Promise<number> {
+    try {
+      const balance = await httpClient.get<WalletBalance>('/wallet/balance');
+      return balance.tyCoins;
+    } catch (error) {
+      console.error('❌ Error fetching coin balance:', error);
+      throw error;
+    }
+  }
+
+  async addCoins(amount: number): Promise<number> {
+    // Coins are added via the payment webhook (automatic)
+    // This method just fetches the current balance
+    return this.getUserCoinBalance();
+  }
+
+  async spendCoins(amount: number): Promise<number> {
+    // Coins are spent via POST /wallet/unlock (handled elsewhere)
+    // This method just fetches the current balance
+    return this.getUserCoinBalance();
+  }
+
+  async logout(): Promise<void> {
+    try {
+      // Clear auth data
+      await TokenStorageService.clearAuth();
+    } catch (error) {
+      console.error('❌ Error logging out:', error);
+      throw error;
+    }
+  }
+}

@@ -9,8 +9,23 @@ export class RegisterUseCase {
       throw new Error('Todos los campos son requeridos');
     }
 
-    if (request.password.length < 6) {
-      throw new Error('La contraseña debe tener al menos 6 caracteres');
+    // Validar username (3-100 caracteres)
+    if (request.username.length < 3) {
+      throw new Error('El nombre de usuario debe tener al menos 3 caracteres');
+    }
+    if (request.username.length > 100) {
+      throw new Error('El nombre de usuario no puede exceder 100 caracteres');
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(request.email)) {
+      throw new Error('Por favor ingresa un correo válido');
+    }
+
+    // Validar password (mínimo 8 caracteres para cumplir con backend)
+    if (request.password.length < 8) {
+      throw new Error('La contraseña debe tener al menos 8 caracteres');
     }
 
     return await this.repository.register(request);

@@ -3,56 +3,101 @@ import {
     ILoginLocalDatasource,
     ILoginRemoteDatasource,
 } from '../datasources/login-datasource.interface';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 export class LoginLocalDatasource implements ILoginLocalDatasource {
   private tokenKey = 'auth_token';
   private userKey = 'auth_user';
 
   async saveToken(token: string): Promise<void> {
-    // TODO: Implement with AsyncStorage
-    console.log('Token saved:', token);
+    try {
+      await AsyncStorage.setItem(this.tokenKey, token);
+    } catch (error) {
+      console.error('Error saving token:', error);
+      throw error;
+    }
   }
 
   async getToken(): Promise<string | null> {
-    // TODO: Implement with AsyncStorage
-    return null;
+    try {
+      return await AsyncStorage.getItem(this.tokenKey);
+    } catch (error) {
+      console.error('Error retrieving token:', error);
+      return null;
+    }
   }
 
   async removeToken(): Promise<void> {
-    // TODO: Implement with AsyncStorage
-    console.log('Token removed');
+    try {
+      await AsyncStorage.removeItem(this.tokenKey);
+    } catch (error) {
+      console.error('Error removing token:', error);
+      throw error;
+    }
   }
 
   async saveUser(user: User): Promise<void> {
-    // TODO: Implement with AsyncStorage
-    console.log('User saved:', user);
+    try {
+      await AsyncStorage.setItem(this.userKey, JSON.stringify(user));
+    } catch (error) {
+      console.error('Error saving user:', error);
+      throw error;
+    }
   }
 
   async getUser(): Promise<User | null> {
-    // TODO: Implement with AsyncStorage
-    return null;
+    try {
+      const user = await AsyncStorage.getItem(this.userKey);
+      return user ? JSON.parse(user) : null;
+    } catch (error) {
+      console.error('Error retrieving user:', error);
+      return null;
+    }
   }
 
   async removeUser(): Promise<void> {
-    // TODO: Implement with AsyncStorage
-    console.log('User removed');
+    try {
+      await AsyncStorage.removeItem(this.userKey);
+    } catch (error) {
+      console.error('Error removing user:', error);
+      throw error;
+    }
   }
+}
+
+interface AuthResponse {
+  token: string;
+  role: string;
+  userId: string;
 }
 
 export class LoginRemoteDatasource implements ILoginRemoteDatasource {
   async login(request: LoginRequest): Promise<LoginResponse> {
-    // TODO: Implement with actual API call
-    // Mock response for now
-    const mockUser: User = {
-      id: '1',
-      email: request.email,
-      username: request.email.split('@')[0],
-      createdAt: new Date(),
-    };
+    try {
+      const response = await httpClient.post<AuthResponse>('/auth/login', {
+        email: request.email,
+        password: request.password,
+      });
 
-    return {
-      user: mockUser,
-      token: 'mock_token_' + Date.now(),
-    };
+      // Save auth data persistently
+      await TokenStorageService.saveAuth(response.token, response.userId, response.role);
+
+      const user: User = {
+        id: response.userId,
+        email: request.email,
+        username: request.email.split('@')[0],
+        createdAt: new Date(),
+      };
+
+      return {
+        user,
+        token: response.token,
+      };
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      throw error;
+    }
   }
 }

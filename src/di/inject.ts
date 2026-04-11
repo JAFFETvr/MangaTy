@@ -41,12 +41,12 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.EXPLORE_CATEGORY_VIEW_MODEL, () => exploreCategoryViewModel);
 
     // Favorites feature
-    const { FavoriteLocalDataSource } = require('@/src/features/favorites/data/datasources/favorite-local-datasource');
+    const { FavoritesRemoteDataSource } = require('@/src/features/favorites/data/datasources/favorites-remote-datasource');
     const { FavoriteRepositoryImpl } = require('@/src/features/favorites/data/repositories/favorite-repository-impl');
     const { GetFavorites, AddFavorite, RemoveFavorite } = require('@/src/features/favorites/domain/use-cases');
     const { FavoritesViewModel } = require('@/src/features/favorites/presentation');
 
-    const favoriteDataSource = new FavoriteLocalDataSource();
+    const favoriteDataSource = new FavoritesRemoteDataSource();
     const favoriteRepository = new FavoriteRepositoryImpl(favoriteDataSource);
 
     const getFavorites = new GetFavorites(favoriteRepository);
@@ -59,12 +59,12 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.FAVORITES_VIEW_MODEL, () => favoritesViewModel);
 
     // History feature
-    const { HistoryLocalDataSource } = require('@/src/features/history/data/datasources/history-local-datasource');
+    const { HistoryRemoteDataSource } = require('@/src/features/history/data/datasources/history-remote-datasource');
     const { HistoryRepositoryImpl } = require('@/src/features/history/data/repositories/history-repository-impl');
     const { GetHistory, AddToHistory, ClearHistory } = require('@/src/features/history/domain/use-cases');
     const { HistoryViewModel } = require('@/src/features/history/presentation');
 
-    const historyDataSource = new HistoryLocalDataSource();
+    const historyDataSource = new HistoryRemoteDataSource();
     const historyRepository = new HistoryRepositoryImpl(historyDataSource);
 
     const getHistory = new GetHistory(historyRepository);
@@ -100,12 +100,12 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.COIN_STORE_VIEW_MODEL, () => coinStoreViewModel);
 
     // User feature
-    const { UserLocalDataSource } = require('@/src/features/user/data/datasources/user-local-datasource');
+    const { UserRemoteDataSource } = require('@/src/features/user/data/datasources/user-remote-datasource');
     const { UserRepositoryImpl } = require('@/src/features/user/data/repositories/user-repository-impl');
     const { GetUser, UpdateUser, Logout, SpendCoins, ValidateUserBalance, GetUserCoinBalance } = require('@/src/features/user/domain/use-cases');
     const { ProfileViewModel } = require('@/src/features/user/presentation');
 
-    const userDataSource = new UserLocalDataSource();
+    const userDataSource = new UserRemoteDataSource();
     const userRepository = new UserRepositoryImpl(userDataSource);
 
     const getUser = new GetUser(userRepository);
@@ -172,11 +172,11 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.CHAPTER_PURCHASE_VIEW_MODEL, () => chapterPurchaseViewModel);
 
     // Unlocked Chapters feature
-    const { UnlockedChapterLocalDataSource } = require('@/src/features/unlocked-chapters/data/datasources/UnlockedChapterLocalDataSource');
+    const { UnlockedChaptersRemoteDataSource } = require('@/src/features/unlocked-chapters/data/datasources/unlocked-chapters-remote-datasource');
     const { UnlockedChapterRepository } = require('@/src/features/unlocked-chapters/data/repositories/UnlockedChapterRepository');
     const { UnlockChapterWithCoins, UnlockChapterWithAd, CheckChapterUnlocked, GetUnlockedChapters, UnlockChapterOrchestrator } = require('@/src/features/unlocked-chapters/domain/use-cases');
 
-    const unlockedChapterDataSource = new UnlockedChapterLocalDataSource();
+    const unlockedChapterDataSource = new UnlockedChaptersRemoteDataSource();
     const unlockedChapterRepository = new UnlockedChapterRepository(unlockedChapterDataSource);
 
     const unlockChapterWithCoins = new UnlockChapterWithCoins(unlockedChapterRepository);
