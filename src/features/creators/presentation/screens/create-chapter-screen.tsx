@@ -62,20 +62,28 @@ export default function CreateChapterScreen({ mangaId }: Props) {
         for (const asset of result.assets || []) {
           if (asset.uri) {
             try {
-              // Convertir imagen a base64 para persistencia
+              console.log('📸 Leyendo imagen:', asset.uri);
+
+              // Leer como base64
               const base64 = await FileSystem.readAsStringAsync(asset.uri, {
                 encoding: FileSystem.EncodingType.Base64,
               });
-              const dataUri = `data:image/jpeg;base64,${base64}`;
-              viewModel.addImage(dataUri);
+
+              // Crear blob URL (más eficiente que data URI en web)
+              const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
+              const blobUrl = URL.createObjectURL(blob);
+
+              console.log('✅ Imagen lista:', blobUrl.substring(0, 50) + '...');
+              viewModel.addImage(blobUrl);
             } catch (error) {
-              console.error('Error converting image to base64:', error);
+              console.error('❌ Error procesando imagen:', error);
               Alert.alert('Error', 'No se pudo procesar la imagen');
             }
           }
         }
       }
     } catch (error) {
+      console.error('❌ Error seleccionando imágenes:', error);
       Alert.alert('Error', 'No se pudo seleccionar las imágenes');
     }
   };

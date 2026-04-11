@@ -60,17 +60,30 @@ export default function SettingsScreen() {
 
   const savePhoto = async (uri: string) => {
     try {
-      // Si es un file:// URI, convertir a base64
-      let dataUri = uri;
+      // Si es un file:// URI, convertir a base64 y luego a blob URL
+      let finalUri = uri;
       if (uri.startsWith('file://')) {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        dataUri = `data:image/jpeg;base64,${base64}`;
+        try {
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          // Crear blob URL (más eficiente para display)
+          const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
+          finalUri = URL.createObjectURL(blob);
+          console.log('✅ Foto guardada como blob URL');
+        } catch (error) {
+          console.error('Error convirtiendo foto:', error);
+          // Fallback: usar data URI
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          finalUri = `data:image/jpeg;base64,${base64}`;
+        }
       }
-      setPhotoUri(dataUri);
+      setPhotoUri(finalUri);
       if (user?.email) {
-        await AsyncStorage.setItem(getPhotoStorageKey(user.email), dataUri);
+        // Guardar la URL/data URI para persistencia
+        await AsyncStorage.setItem(getPhotoStorageKey(user.email), finalUri);
       }
     } catch (error) {
       console.error('Error saving photo:', error);
