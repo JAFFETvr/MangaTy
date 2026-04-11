@@ -32,8 +32,10 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
     viewModel.loadWebcomic(slug, mangaId);
-    return unsubscribe;
-  }, [slug, mangaId]);
+    return () => {
+      unsubscribe();
+    };
+  }, [slug, mangaId, viewModel]);
 
   useEffect(() => {
     if (state.success) {
@@ -48,7 +50,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
       Alert.alert('Error', state.error);
       viewModel.resetStatus();
     }
-  }, [state.success, state.error, viewModel]);
+  }, [state.success, state.error]);
 
   if (state.isLoading && !state.manga) {
     return (

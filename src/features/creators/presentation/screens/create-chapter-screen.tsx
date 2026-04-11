@@ -47,7 +47,7 @@ export default function CreateChapterScreen({ mangaId }: Props) {
       ]);
     }
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, [state.success, state.error]);
 
   const pickImages = async () => {
