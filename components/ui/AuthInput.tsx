@@ -9,10 +9,10 @@ interface AuthInputProps extends TextInputProps {
   secureTextEntry?: boolean;
 }
 
-export function AuthInput({ icon, secureTextEntry, ...props }: AuthInputProps) {
+export function AuthInput({ icon, secureTextEntry = false, ...props }: AuthInputProps) {
   const theme = Colors.light;
 
-  const [isSecure, setIsSecure] = React.useState(secureTextEntry);
+  const [isSecure, setIsSecure] = React.useState(secureTextEntry === true);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.authInputBg }]}>
@@ -25,7 +25,7 @@ export function AuthInput({ icon, secureTextEntry, ...props }: AuthInputProps) {
         secureTextEntry={isSecure}
         {...props}
       />
-      {secureTextEntry && (
+      {secureTextEntry === true && (
         <TouchableOpacity onPress={() => setIsSecure(!isSecure)} style={styles.eyeIcon} activeOpacity={0.7}>
           <Feather name={isSecure ? "eye-off" : "eye"} size={20} color={theme.icon} />
         </TouchableOpacity>

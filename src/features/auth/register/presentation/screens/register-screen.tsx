@@ -131,6 +131,7 @@ export function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
         }}
         keyboardType="email-address"
         autoCapitalize="none"
+        secureTextEntry={false}
         editable={!state.isLoading}
       />
       {validationErrors.email && (
