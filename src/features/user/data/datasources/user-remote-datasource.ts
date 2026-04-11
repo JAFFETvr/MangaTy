@@ -3,9 +3,11 @@
  * Fetches user data from the backend API
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../../domain/entities';
 import { httpClient } from '@/src/core/http/http-client';
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 
 interface WalletBalance {
   userId: string;
@@ -20,12 +22,15 @@ export class UserRemoteDataSource {
         return null;
       }
 
+      // Obtener el username guardado desde el registro
+      const username = await AsyncStorage.getItem(STORAGE_KEY_USERNAME);
+
       // Fetch wallet balance to get user's TyCoins
       const balance = await httpClient.get<WalletBalance>('/wallet/balance');
 
       return {
         id: auth.userId,
-        name: auth.userId,
+        name: username || 'Mi Perfil',
         email: '',
         coinBalance: balance.tyCoins,
         memberSince: new Date(),
