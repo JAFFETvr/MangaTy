@@ -1,23 +1,20 @@
 /**
  * Manga Repository Implementation
+ * Delega al datasource remoto (API real).
  */
 
 import { Manga } from '../../domain/entities';
 import { IMangaRepository } from '../../domain/repositories/manga-repository';
-import { MangaLocalDataSource } from '../datasources/manga-local-datasource';
+import { MangaRemoteDataSource } from '../datasources/manga-remote-datasource';
 
 export class MangaRepositoryImpl implements IMangaRepository {
-  constructor(private dataSource: MangaLocalDataSource) {}
+  constructor(private remote: MangaRemoteDataSource) {}
 
   async getAllMangas(): Promise<Manga[]> {
-    return this.dataSource.getAllMangas();
+    return this.remote.getAllMangas();
   }
 
-  async getMangaById(id: number): Promise<Manga | null> {
-    return this.dataSource.getMangaById(id);
-  }
-
-  async searchMangas(query: string): Promise<Manga[]> {
-    return this.dataSource.searchMangas(query);
+  async getMangaDetail(slug: string, mangaId: string): Promise<Manga> {
+    return this.remote.getMangaDetail(slug, mangaId);
   }
 }

@@ -1,12 +1,12 @@
 /**
- * Manga Repository Interface - Abstraction for manga data source
- * Defined in domain, implemented in data layer
+ * IMangaRepository - Abstracción del repositorio de manga en el dominio
  */
 
 import { Manga } from '../entities';
 
 export interface IMangaRepository {
+  /** Lista pública de comics */
   getAllMangas(): Promise<Manga[]>;
-  getMangaById(id: number): Promise<Manga | null>;
-  searchMangas(query: string): Promise<Manga[]>;
+  /** Detalle completo con capítulos: 2 llamadas en paralelo */
+  getMangaDetail(slug: string, mangaId: string): Promise<Manga>;
 }

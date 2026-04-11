@@ -14,26 +14,59 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPhotoStorageKey } from '@/app/settings';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { ProfileViewModel } from '@/src/features/user/presentation/view-models/profile-view-model';
+import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
+import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
+import { buildCoverUrl } from '@/src/core/api/api-config';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [viewModel] = useState<ProfileViewModel>(() =>
     serviceLocator.get(DIKeys.PROFILE_VIEW_MODEL)
   );
+  const [historyVM] = useState<HistoryViewModel>(() =>
+    serviceLocator.get(DIKeys.HISTORY_VIEW_MODEL)
+  );
+  const [favoritesVM] = useState<FavoritesViewModel>(() =>
+    serviceLocator.get(DIKeys.FAVORITES_VIEW_MODEL)
+  );
+
   const [state, setState] = useState(viewModel.getState());
+  const [historyState, setHistoryState] = useState(historyVM.getState());
+  const [favoritesState, setFavoritesState] = useState(favoritesVM.getState());
+
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [hasCreatedWebcomics, setHasCreatedWebcomics] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = viewModel.state$.subscribe(setState);
+    const unsubProfile = viewModel.state$.subscribe(setState);
+    const unsubHistory = historyVM.state$.subscribe(setHistoryState);
+    const unsubFavorites = favoritesVM.state$.subscribe(setFavoritesState);
+
     viewModel.loadUser();
-    return unsubscribe;
-  }, [viewModel]);
+    historyVM.loadHistory();
+    favoritesVM.loadFavorites();
+
+    return () => {
+      unsubProfile();
+      unsubHistory();
+      unsubFavorites();
+    };
+  }, [viewModel, historyVM, favoritesVM]);
 
   const user = state.user;
 
   // Recarga la foto cada vez que la pantalla entra en foco y cuando el usuario está disponible
   useFocusEffect(
     useCallback(() => {
+      AsyncStorage.getItem('@mock_created_webcomics').then((val) => {
+        if (val) {
+          const list = JSON.parse(val);
+          setHasCreatedWebcomics(list.length > 0);
+        } else {
+          setHasCreatedWebcomics(false);
+        }
+      });
+
       if (user?.email) {
         AsyncStorage.getItem(getPhotoStorageKey(user.email)).then((saved) => {
           setPhotoUri(saved || null);
@@ -78,11 +111,11 @@ export default function ProfileScreen() {
         {/* Estadísticas */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{user?.stats?.mangasRead ?? 0}</Text>
-            <Text style={styles.statLabel}>Leyendo</Text>
+            <Text style={styles.statNumber}>{historyState.history.length}</Text>
+            <Text style={styles.statLabel}>Historial</Text>
           </View>
           <View style={[styles.statCard, styles.statCardMiddle]}>
-            <Text style={styles.statNumber}>{user?.stats?.favorites ?? 0}</Text>
+            <Text style={styles.statNumber}>{favoritesState.favorites.length}</Text>
             <Text style={styles.statLabel}>Favoritos</Text>
           </View>
           <View style={styles.statCard}>
@@ -91,17 +124,30 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Card Crear Webcomic */}
-        <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85}>
-          <View style={styles.creatorIconWrapper}>
-            <Feather name="star" size={22} color="#D8708E" />
-          </View>
-          <View style={styles.creatorText}>
-            <Text style={styles.creatorTitle}>Crear Webcomic</Text>
-            <Text style={styles.creatorSubtitle}>Comparte tus historias y gana dinero</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color="#999" />
-        </TouchableOpacity>
+        {/* Card Crear / Ver Webcomic (Dependiendo de si ya tiene cómics creados) */}
+        {hasCreatedWebcomics ? ( // TODO: Conectar con el estado real del usuario (ej: user?.createdWebcomics?.length > 0)
+          <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85} onPress={() => router.push('/my-webcomics')}>
+            <View style={[styles.creatorIconWrapper, { backgroundColor: '#D8708E', borderColor: '#D8708E' }]}>
+              <Feather name="star" size={20} color="#FFF" />
+            </View>
+            <View style={styles.creatorText}>
+              <Text style={styles.creatorTitle}>Ver tus Webcomics</Text>
+              <Text style={styles.creatorSubtitle}>Administra tu contenido y estadísticas</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color="#999" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85} onPress={() => router.push('/create-webcomic')}>
+            <View style={styles.creatorIconWrapper}>
+              <Feather name="star" size={22} color="#D8708E" />
+            </View>
+            <View style={styles.creatorText}>
+              <Text style={styles.creatorTitle}>Crear Webcomic</Text>
+              <Text style={styles.creatorSubtitle}>Comparte tus historias y gana dinero</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color="#999" />
+          </TouchableOpacity>
+        )}
 
         {/* Historial de lectura */}
         <View style={styles.sectionHeader}>
@@ -109,14 +155,31 @@ export default function ProfileScreen() {
             <Feather name="clock" size={16} color="#D8708E" />
             <Text style={styles.sectionTitle}>Historial de lectura</Text>
           </View>
-          <Text style={styles.seeAll}>Ver todo</Text>
+          <TouchableOpacity onPress={() => router.push('/history')}>
+            <Text style={styles.seeAll}>Ver todo</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Estado vacío para historial */}
-        <View style={styles.emptyState}>
-          <Feather name="book-open" size={36} color="#E0C4CC" />
-          <Text style={styles.emptyStateText}>Aún no has leído ningún manga</Text>
-        </View>
+        {/* Estado dinámico para historial */}
+        {historyState.history.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Feather name="book-open" size={36} color="#E0C4CC" />
+            <Text style={styles.emptyStateText}>Aún no has leído ningún manga</Text>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.previewScroll}>
+            {historyState.history.slice(0, 5).map((item) => (
+              <TouchableOpacity 
+                key={item.manga.id} 
+                style={styles.previewCard}
+                onPress={() => router.push({ pathname: '/webcomic/[slug]', params: { slug: item.manga.slug, mangaId: item.manga.id } })}
+              >
+                <Image source={{ uri: item.manga.coverImagePath ? buildCoverUrl(item.manga.coverImagePath) : '' }} style={styles.previewImage} />
+                <Text style={styles.previewTitle} numberOfLines={1}>{item.manga.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Mis favoritos */}
         <View style={styles.sectionHeader}>
@@ -124,14 +187,31 @@ export default function ProfileScreen() {
             <Feather name="heart" size={16} color="#D8708E" />
             <Text style={styles.sectionTitle}>Mis favoritos</Text>
           </View>
-          <Text style={styles.seeAll}>Ver todo</Text>
+          <TouchableOpacity onPress={() => router.push('/favorites')}>
+            <Text style={styles.seeAll}>Ver todo</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Estado vacío para favoritos */}
-        <View style={[styles.emptyState, { marginBottom: 40 }]}>
-          <Feather name="heart" size={36} color="#E0C4CC" />
-          <Text style={styles.emptyStateText}>Aún no tienes favoritos</Text>
-        </View>
+        {/* Estado dinámico para favoritos */}
+        {favoritesState.favorites.length === 0 ? (
+          <View style={[styles.emptyState, { marginBottom: 40 }]}>
+            <Feather name="heart" size={36} color="#E0C4CC" />
+            <Text style={styles.emptyStateText}>Aún no tienes favoritos</Text>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.previewScroll, { marginBottom: 40 }]}>
+            {favoritesState.favorites.slice(0, 5).map((manga) => (
+              <TouchableOpacity 
+                key={manga.id} 
+                style={styles.previewCard}
+                onPress={() => router.push({ pathname: '/webcomic/[slug]', params: { slug: manga.slug, mangaId: manga.id } })}
+              >
+                <Image source={{ uri: manga.coverImagePath ? buildCoverUrl(manga.coverImagePath) : '' }} style={styles.previewImage} />
+                <Text style={styles.previewTitle} numberOfLines={1}>{manga.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
       </ScrollView>
     </View>
@@ -278,6 +358,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 13,
     color: '#BBB',
+  },
+  previewScroll: {
+    paddingLeft: 16,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  previewCard: {
+    width: 100,
+    marginRight: 12,
+  },
+  previewImage: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    marginBottom: 6,
+  },
+  previewTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1A1A2E',
   },
 });
 

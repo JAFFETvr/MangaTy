@@ -102,6 +102,15 @@ export const DIKeys = {
   WALLET_VIEW_MODEL: 'walletViewModel',
   LOGIN_VIEW_MODEL: 'loginViewModel',
   REGISTER_VIEW_MODEL: 'registerViewModel',
+  EXPLORE_CATEGORY_VIEW_MODEL: 'exploreCategoryViewModel',
+  MANAGE_WEBCOMIC_VIEW_MODEL: 'manageWebcomicViewModel',
+  CREATE_CHAPTER_VIEW_MODEL: 'createChapterViewModel',
+  ANALYTICS_VIEW_MODEL: 'analyticsViewModel',
+  MONETIZATION_VIEW_MODEL: 'monetizationViewModel',
+  EDIT_WEBCOMIC_VIEW_MODEL: 'editWebcomicViewModel',
+  ACCESS_CONFIG_VIEW_MODEL: 'accessConfigViewModel',
+  FREE_CHAPTERS_VIEW_MODEL: 'freeChaptersViewModel',
+  CHAPTER_PURCHASE_VIEW_MODEL: 'chapterPurchaseViewModel',
 
   // User Use Cases
   SPEND_COINS: 'spendCoins',

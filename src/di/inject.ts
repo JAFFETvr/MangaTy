@@ -19,24 +19,26 @@ export function setupDependencies(): void {
 
   try {
     // Manga feature
-    const { MangaLocalDataSource } = require('@/src/features/manga/data/datasources/manga-local-datasource');
+    const { MangaRemoteDataSource } = require('@/src/features/manga/data/datasources/manga-remote-datasource');
     const { MangaRepositoryImpl } = require('@/src/features/manga/data/repositories/manga-repository-impl');
-    const { GetAllMangas, GetMangaById, SearchMangas } = require('@/src/features/manga/domain/use-cases');
+    const { GetAllMangas, GetMangaDetail, SearchMangas } = require('@/src/features/manga/domain/use-cases');
     const { HomeViewModel, MangaDetailViewModel } = require('@/src/features/manga/presentation');
+    const { ExploreCategoryViewModel } = require('@/src/features/explore/presentation/view-models/explore-category-view-model');
 
-    const mangaDataSource = new MangaLocalDataSource();
-    const mangaRepository = new MangaRepositoryImpl(mangaDataSource);
+    const mangaRemoteDataSource = new MangaRemoteDataSource();
+    const mangaRepository = new MangaRepositoryImpl(mangaRemoteDataSource);
 
     const getAllMangas = new GetAllMangas(mangaRepository);
-    const getMangaById = new GetMangaById(mangaRepository);
-    const searchMangas = new SearchMangas(mangaRepository);
+    const getMangaDetail = new GetMangaDetail(mangaRepository);
 
-    const homeViewModel = new HomeViewModel(getAllMangas, searchMangas);
-    const mangaDetailViewModel = new MangaDetailViewModel(getMangaById);
+    const homeViewModel = new HomeViewModel(getAllMangas);
+    const mangaDetailViewModel = new MangaDetailViewModel(getMangaDetail);
+    const exploreCategoryViewModel = new ExploreCategoryViewModel(getAllMangas);
 
     serviceLocator.registerSingleton(DIKeys.MANGA_REPOSITORY, () => mangaRepository);
     serviceLocator.registerSingleton(DIKeys.HOME_VIEW_MODEL, () => homeViewModel);
     serviceLocator.registerSingleton(DIKeys.MANGA_DETAIL_VIEW_MODEL, () => mangaDetailViewModel);
+    serviceLocator.registerSingleton(DIKeys.EXPLORE_CATEGORY_VIEW_MODEL, () => exploreCategoryViewModel);
 
     // Favorites feature
     const { FavoriteLocalDataSource } = require('@/src/features/favorites/data/datasources/favorite-local-datasource');
@@ -122,8 +124,8 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.GET_USER_COIN_BALANCE, () => getUserCoinBalance);
 
     // Creators feature
-    const { CreatorLocalDataSource } = require('@/src/features/creators/data/datasources/CreatorLocalDataSource');
-    const { CreatorRepository } = require('@/src/features/creators/data/repositories/CreatorRepository');
+    const { CreatorLocalDataSource } = require('@/src/features/creators/data/datasources/creator-local-data-source');
+    const { CreatorRepository } = require('@/src/features/creators/data/repositories/creator-repository');
     const { GetCreatorById, GetCreatorMangas, GetCreatorEarnings, GetAllCreators } = require('@/src/features/creators/domain/use-cases');
 
     const creatorDataSource = new CreatorLocalDataSource();
@@ -134,11 +136,40 @@ export function setupDependencies(): void {
     const getCreatorEarnings = new GetCreatorEarnings(creatorRepository);
     const getAllCreators = new GetAllCreators(creatorRepository);
 
+    const { CreatorViewModel } = require('@/src/features/creators/presentation/view-models/creator-view-model');
+    const { ManageWebcomicViewModel } = require('@/src/features/creators/presentation/view-models/manage-webcomic-view-model');
+    const { AnalyticsViewModel } = require('@/src/features/creators/presentation/view-models/analytics-view-model');
+    const { CreateChapterViewModel } = require('@/src/features/creators/presentation/view-models/create-chapter-view-model');
+    const { MonetizationViewModel } = require('@/src/features/creators/presentation/view-models/monetization-view-model');
+    const { EditWebcomicViewModel } = require('@/src/features/creators/presentation/view-models/edit-webcomic-view-model');
+    const { AccessConfigViewModel } = require('@/src/features/creators/presentation/view-models/access-config-view-model');
+    const { FreeChaptersViewModel } = require('@/src/features/creators/presentation/view-models/free-chapters-view-model');
+    const { ChapterPurchaseViewModel } = require('@/src/features/manga/presentation/view-models/chapter-purchase-view-model');
+
+    const creatorViewModel = new CreatorViewModel(getCreatorById, getCreatorMangas, getCreatorEarnings, getAllCreators);
+    const manageWebcomicViewModel = new ManageWebcomicViewModel(getMangaDetail);
+    const analyticsViewModel = new AnalyticsViewModel(getMangaDetail);
+    const createChapterViewModel = new CreateChapterViewModel();
+    const monetizationViewModel = new MonetizationViewModel();
+    const editWebcomicViewModel = new EditWebcomicViewModel(getMangaDetail);
+    const accessConfigViewModel = new AccessConfigViewModel();
+    const freeChaptersViewModel = new FreeChaptersViewModel(getMangaDetail);
+    const chapterPurchaseViewModel = new ChapterPurchaseViewModel();
+
     serviceLocator.registerSingleton(DIKeys.CREATOR_REPOSITORY, () => creatorRepository);
     serviceLocator.registerSingleton(DIKeys.GET_CREATOR_BY_ID, () => getCreatorById);
     serviceLocator.registerSingleton(DIKeys.GET_CREATOR_MANGAS, () => getCreatorMangas);
     serviceLocator.registerSingleton(DIKeys.GET_CREATOR_EARNINGS, () => getCreatorEarnings);
     serviceLocator.registerSingleton(DIKeys.GET_ALL_CREATORS, () => getAllCreators);
+    serviceLocator.registerSingleton(DIKeys.CREATOR_VIEW_MODEL, () => creatorViewModel);
+    serviceLocator.registerSingleton(DIKeys.MANAGE_WEBCOMIC_VIEW_MODEL, () => manageWebcomicViewModel);
+    serviceLocator.registerSingleton(DIKeys.ANALYTICS_VIEW_MODEL, () => analyticsViewModel);
+    serviceLocator.registerSingleton(DIKeys.CREATE_CHAPTER_VIEW_MODEL, () => createChapterViewModel);
+    serviceLocator.registerSingleton(DIKeys.MONETIZATION_VIEW_MODEL, () => monetizationViewModel);
+    serviceLocator.registerSingleton(DIKeys.EDIT_WEBCOMIC_VIEW_MODEL, () => editWebcomicViewModel);
+    serviceLocator.registerSingleton(DIKeys.ACCESS_CONFIG_VIEW_MODEL, () => accessConfigViewModel);
+    serviceLocator.registerSingleton(DIKeys.FREE_CHAPTERS_VIEW_MODEL, () => freeChaptersViewModel);
+    serviceLocator.registerSingleton(DIKeys.CHAPTER_PURCHASE_VIEW_MODEL, () => chapterPurchaseViewModel);
 
     // Unlocked Chapters feature
     const { UnlockedChapterLocalDataSource } = require('@/src/features/unlocked-chapters/data/datasources/UnlockedChapterLocalDataSource');

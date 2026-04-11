@@ -14,7 +14,7 @@ export class HistoryRepositoryImpl implements IHistoryRepository {
     return this.dataSource.getHistory();
   }
 
-  async addToHistory(mangaId: number, chapterNumber: number, progress: number): Promise<void> {
+  async addToHistory(mangaId: string, chapterNumber: number, progress: number): Promise<void> {
     return this.dataSource.addToHistory(mangaId, chapterNumber, progress);
   }
 

@@ -1,9 +1,13 @@
 /**
- * Chapter Entity - Represents a manga chapter
+ * Chapter Entity - alineada con GET /api/comics/{mangaId}/chapters
+ * Solo capítulos con status PUBLISHED
  */
 
 export interface Chapter {
-  number: number;
-  label: string;
-  price: number; // 0 = free with ads, >0 = paid
+  id: string;             // UUID del capítulo
+  chapterNumber: number;
+  title: string;
+  premium: boolean;       // false = gratis con anuncios; true = de pago
+  priceTyCoins: number;  // Solo relevante si premium === true
+  publishedAt: string;   // ISO 8601
 }

@@ -7,6 +7,6 @@ import { ReadingHistory } from '../entities';
 
 export interface IHistoryRepository {
   getHistory(): Promise<(ReadingHistory & { manga: Manga })[]>;
-  addToHistory(mangaId: number, chapterNumber: number, progress: number): Promise<void>;
+  addToHistory(mangaId: string, chapterNumber: number, progress: number): Promise<void>;
   clearHistory(): Promise<void>;
 }

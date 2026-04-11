@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { TYPOGRAPHY } from '@/src/core/theme/typography';
 
@@ -36,7 +37,11 @@ export function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const renderItem = ({ item }: { item: typeof GENRES[0] }) => (
-    <TouchableOpacity style={styles.cardContainer} activeOpacity={0.8}>
+    <TouchableOpacity 
+      style={styles.cardContainer} 
+      activeOpacity={0.8}
+      onPress={() => router.push({ pathname: '/explore/[genre]', params: { genre: item.title } })}
+    >
       <Image source={{ uri: item.image }} style={styles.cardImage} />
       <View style={styles.cardOverlay}>
         <Text style={styles.cardTitle}>{item.title}</Text>

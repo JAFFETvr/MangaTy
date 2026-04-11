@@ -5,7 +5,7 @@
 
 import { StateFlow } from '@/src/shared/hooks';
 import { Manga } from '../../domain/entities';
-import { GetAllMangas, SearchMangas } from '../../domain/use-cases';
+import { GetAllMangas } from '../../domain/use-cases';
 
 export interface HomeViewModelState {
   mangas: Manga[];
@@ -27,10 +27,7 @@ export class HomeViewModel {
   private stateSubject = new StateFlow<HomeViewModelState>(initialState);
   state$ = this.stateSubject;
 
-  constructor(
-    private getAllMangas: GetAllMangas,
-    private searchMangas: SearchMangas
-  ) {}
+  constructor(private getAllMangas: GetAllMangas) {}
 
   getState(): HomeViewModelState {
     return this.stateSubject.getValue();
@@ -54,30 +51,18 @@ export class HomeViewModel {
     }
   }
 
-  async search(query: string): Promise<void> {
-    this.updateState({ searchQuery: query, isLoading: true });
-
-    try {
-      if (!query.trim()) {
-        const state = this.getState();
-        this.updateState({
-          filteredMangas: state.mangas,
-          isLoading: false,
-        });
-        return;
-      }
-
-      const results = await this.searchMangas.execute(query);
-      this.updateState({
-        filteredMangas: results,
-        isLoading: false,
-      });
-    } catch (error) {
-      this.updateState({
-        error: 'Error en la búsqueda',
-        isLoading: false,
-      });
+  /** Búsqueda local sobre los mangas ya cargados */
+  searchLocal(query: string): void {
+    const state = this.getState();
+    if (!query.trim()) {
+      this.updateState({ filteredMangas: state.mangas, searchQuery: '' });
+      return;
     }
+    const lower = query.toLowerCase();
+    const results = state.mangas.filter(
+      (m) => m.title.toLowerCase().includes(lower) || m.genre.toLowerCase().includes(lower)
+    );
+    this.updateState({ filteredMangas: results, searchQuery: query });
   }
 
   private updateState(partialState: Partial<HomeViewModelState>): void {

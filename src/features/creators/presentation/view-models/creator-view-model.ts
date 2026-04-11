@@ -27,10 +27,19 @@ export class CreatorViewModel {
 
   private getCreatorById: GetCreatorById;
   private getAllCreators: GetAllCreators;
+  private getCreatorMangas: any; // O el tipo correspondiente si está disponible
+  private getCreatorEarnings: any;
 
-  constructor() {
-    this.getCreatorById = serviceLocator.get(DIKeys.GET_CREATOR_BY_ID);
-    this.getAllCreators = serviceLocator.get(DIKeys.GET_ALL_CREATORS);
+  constructor(
+    getCreatorById: GetCreatorById,
+    getCreatorMangas: any,
+    getCreatorEarnings: any,
+    getAllCreators: GetAllCreators
+  ) {
+    this.getCreatorById = getCreatorById;
+    this.getCreatorMangas = getCreatorMangas;
+    this.getCreatorEarnings = getCreatorEarnings;
+    this.getAllCreators = getAllCreators;
   }
 
   getState(): CreatorViewModelState {
