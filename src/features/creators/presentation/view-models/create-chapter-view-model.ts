@@ -1,4 +1,5 @@
 import { StateFlow } from '@/src/shared/hooks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface CreateChapterState {
   title: string;
@@ -49,11 +50,45 @@ export class CreateChapterViewModel {
     this.updateState({ isLoading: true, error: null });
 
     try {
-      // Mock de publicación
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Obtener webcomics del cache local
+      const storedStr = await AsyncStorage.getItem('@mock_created_webcomics');
+      if (!storedStr) {
+        throw new Error('Comic no encontrado');
+      }
+
+      const webcomics = JSON.parse(storedStr);
+      const comicIndex = webcomics.findIndex((w: any) => w.id === mangaId);
+
+      if (comicIndex === -1) {
+        throw new Error('Comic no encontrado');
+      }
+
+      // Crear nuevo capítulo
+      const newChapter = {
+        id: `chapter-${Date.now()}`,
+        chapterNumber: (webcomics[comicIndex].chapters?.length || 0) + 1,
+        title: title,
+        premium: false,
+        priceTyCoins: 0,
+        publishedAt: new Date().toISOString(),
+        pages: images,
+      };
+
+      // Agregar capítulo al comic
+      if (!webcomics[comicIndex].chapters) {
+        webcomics[comicIndex].chapters = [];
+      }
+      webcomics[comicIndex].chapters.push(newChapter);
+
+      // Guardar cambios
+      await AsyncStorage.setItem('@mock_created_webcomics', JSON.stringify(webcomics));
+
       this.updateState({ isLoading: false, success: true });
     } catch (error) {
-      this.updateState({ isLoading: false, error: 'Ocurrió un error al publicar el capítulo' });
+      this.updateState({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Ocurrió un error al publicar el capítulo'
+      });
     }
   }
 

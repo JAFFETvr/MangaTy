@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { CreateChapterViewModel } from '../view-models/create-chapter-view-model';
 
@@ -22,14 +23,14 @@ interface Props {
 
 export default function CreateChapterScreen({ mangaId }: Props) {
   const insets = useSafeAreaInsets();
-  const [viewModel] = useState<CreateChapterViewModel>(() => 
+  const [viewModel] = useState<CreateChapterViewModel>(() =>
     serviceLocator.get(DIKeys.CREATE_CHAPTER_VIEW_MODEL)
   );
   const [state, setState] = useState(viewModel.getState());
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
-    
+
     if (state.success) {
       Alert.alert('¡Éxito!', 'Capítulo publicado correctamente', [
         { text: 'OK', onPress: () => router.back() }
@@ -43,6 +44,26 @@ export default function CreateChapterScreen({ mangaId }: Props) {
 
     return unsubscribe;
   }, [state.success, state.error]);
+
+  const pickImages = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultiple: true,
+        quality: 0.8,
+      });
+
+      if (!result.cancelled) {
+        result.assets?.forEach(asset => {
+          if (asset.uri) {
+            viewModel.addImage(asset.uri);
+          }
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo seleccionar las imágenes');
+    }
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -66,22 +87,48 @@ export default function CreateChapterScreen({ mangaId }: Props) {
         />
 
         <Text style={[styles.label, { marginTop: 24 }]}>Páginas del capítulo</Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.uploadArea}
           activeOpacity={0.8}
+          onPress={pickImages}
         >
           <Feather name="upload" size={48} color="#D8708E" style={{ marginBottom: 12 }} />
           <Text style={styles.uploadTitle}>Subir páginas</Text>
           <Text style={styles.uploadSubtitle}>PNG, JPG - Múltiples archivos</Text>
         </TouchableOpacity>
 
+        {state.images.length > 0 && (
+          <View style={styles.imagesContainer}>
+            <View style={styles.imagesHeader}>
+              <Text style={styles.imagesTitle}>{state.images.length} página{state.images.length !== 1 ? 's' : ''} seleccionada{state.images.length !== 1 ? 's' : ''}</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.imagesList}
+            >
+              {state.images.map((uri, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image source={{ uri }} style={styles.imageThumb} />
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => viewModel.removeImage(index)}
+                  >
+                    <Feather name="x" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
 
-        <TouchableOpacity 
-          style={[styles.publishButton, (!state.title || state.isLoading) && styles.publishButtonDisabled]}
+        <TouchableOpacity
+          style={[styles.publishButton, (!state.title || state.images.length === 0 || state.isLoading) && styles.publishButtonDisabled]}
           onPress={() => viewModel.publishChapter(mangaId)}
-          disabled={state.isLoading}
+          disabled={!state.title || state.images.length === 0 || state.isLoading}
         >
           {state.isLoading ? (
             <ActivityIndicator color="#FFF" />
@@ -150,6 +197,47 @@ const styles = StyleSheet.create({
   uploadSubtitle: {
     fontSize: 13,
     color: '#999',
+  },
+  imagesContainer: {
+    marginTop: 20,
+    backgroundColor: '#FEF8F9',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEEBED',
+  },
+  imagesHeader: {
+    marginBottom: 12,
+  },
+  imagesTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1A1A2E',
+  },
+  imagesList: {
+    gap: 12,
+  },
+  imageWrapper: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  imageThumb: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#EEE',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   publishButton: {
     backgroundColor: '#E2919E',

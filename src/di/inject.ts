@@ -164,7 +164,8 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.CREATOR_VIEW_MODEL, () => creatorViewModel);
     serviceLocator.registerSingleton(DIKeys.MANAGE_WEBCOMIC_VIEW_MODEL, () => manageWebcomicViewModel);
     serviceLocator.registerSingleton(DIKeys.ANALYTICS_VIEW_MODEL, () => analyticsViewModel);
-    serviceLocator.registerSingleton(DIKeys.CREATE_CHAPTER_VIEW_MODEL, () => createChapterViewModel);
+    // CREATE_CHAPTER_VIEW_MODEL: Factory (not singleton) - cada pantalla obtiene su propia instancia
+    serviceLocator.register(DIKeys.CREATE_CHAPTER_VIEW_MODEL, () => new CreateChapterViewModel());
     serviceLocator.registerSingleton(DIKeys.MONETIZATION_VIEW_MODEL, () => monetizationViewModel);
     // EDIT_WEBCOMIC_VIEW_MODEL: Factory (not singleton) - cada pantalla de edición obtiene su propia instancia
     serviceLocator.register(DIKeys.EDIT_WEBCOMIC_VIEW_MODEL, () => new EditWebcomicViewModel(getMangaDetail));
