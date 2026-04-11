@@ -1,9 +1,11 @@
 import { StateFlow } from '@/src/shared/hooks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
 import { Manga } from '@/src/features/manga/domain/entities';
 
 export interface EditWebcomicState {
   manga: Manga | null;
+  mangaId: string | null;
   isLoading: boolean;
   isSaving: boolean;
   form: {
@@ -19,6 +21,7 @@ export interface EditWebcomicState {
 
 const initialState: EditWebcomicState = {
   manga: null,
+  mangaId: null,
   isLoading: false,
   isSaving: false,
   form: {
@@ -33,9 +36,9 @@ const initialState: EditWebcomicState = {
 };
 
 export const AVAILABLE_GENRES = [
-  'Acción', 'Romance', 'Comedia', 'Drama', 'Fantasía', 
-  'Ciencia Ficción', 'Terror', 'Misterio', 'Aventura', 
-  'Slice of Life', 'Deportes', 'Histórico', 'Supernatural', 
+  'Acción', 'Romance', 'Comedia', 'Drama', 'Fantasía',
+  'Ciencia Ficción', 'Terror', 'Misterio', 'Aventura',
+  'Slice of Life', 'Deportes', 'Histórico', 'Supernatural',
   'Psicológico', 'Thriller'
 ];
 
@@ -50,7 +53,7 @@ export class EditWebcomicViewModel {
   }
 
   async loadWebcomic(slug: string, mangaId: string) {
-    this.updateState({ isLoading: true });
+    this.updateState({ isLoading: true, mangaId });
     try {
       const manga = await this.getMangaDetail.execute(slug, mangaId);
       this.updateState({
@@ -80,7 +83,7 @@ export class EditWebcomicViewModel {
   toggleGenre(genre: string) {
     const current = [...this.getState().form.selectedGenres];
     const index = current.indexOf(genre);
-    
+
     if (index > -1) {
       current.splice(index, 1);
     } else if (current.length < 3) {
@@ -89,18 +92,50 @@ export class EditWebcomicViewModel {
       // Máximo 3
       return;
     }
-    
+
     this.updateForm({ selectedGenres: current });
   }
 
   async saveChanges() {
     this.updateState({ isSaving: true, error: null });
     try {
-      // Mock de guardado
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const state = this.getState();
+      const mangaId = state.mangaId;
+
+      if (!mangaId) {
+        throw new Error('No se puede guardar - ID no encontrado');
+      }
+
+      // Obtener webcomics del cache local
+      const storedStr = await AsyncStorage.getItem('@mock_created_webcomics');
+      if (!storedStr) {
+        throw new Error('Comic no encontrado');
+      }
+
+      const webcomics = JSON.parse(storedStr);
+      const comicIndex = webcomics.findIndex((w: any) => w.id === mangaId);
+
+      if (comicIndex === -1) {
+        throw new Error('Comic no encontrado para actualizar');
+      }
+
+      // Actualizar el comic con los nuevos datos
+      webcomics[comicIndex] = {
+        ...webcomics[comicIndex],
+        title: state.form.title,
+        description: state.form.description,
+        genres: state.form.selectedGenres,
+      };
+
+      // Guardar cambios en AsyncStorage
+      await AsyncStorage.setItem('@mock_created_webcomics', JSON.stringify(webcomics));
+
       this.updateState({ isSaving: false, success: true });
     } catch (error) {
-      this.updateState({ isSaving: false, error: 'Error al guardar los cambios' });
+      this.updateState({
+        isSaving: false,
+        error: error instanceof Error ? error.message : 'Error al guardar los cambios'
+      });
     }
   }
 
