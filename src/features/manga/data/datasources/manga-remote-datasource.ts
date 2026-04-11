@@ -93,6 +93,16 @@ export class MangaRemoteDataSource {
         throw new Error('Comic no encontrado en cache');
       }
 
+      // Mapear capítulos si existen
+      const chapters: Chapter[] = (webcomic.chapters || []).map((cap: any) => ({
+        id: cap.id,
+        chapterNumber: cap.chapterNumber,
+        title: cap.title,
+        premium: cap.premium ?? false,
+        priceTyCoins: cap.priceTyCoins ?? 0,
+        publishedAt: cap.publishedAt ?? '',
+      }));
+
       return {
         id: webcomic.id,
         title: webcomic.title,
@@ -104,7 +114,7 @@ export class MangaRemoteDataSource {
         coverImagePath: webcomic.coverImage || '',
         creatorName: 'Tu Webcomic',
         createdAt: new Date().toISOString(),
-        chaptersData: [],
+        chaptersData: chapters,
       };
     } catch (error) {
       console.error('❌ Error al cargar comic:', error);

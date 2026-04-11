@@ -131,7 +131,7 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
         {/* Chapters Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Capítulos</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.newChapterButton}
             onPress={() => router.push(`/manage-webcomic/${mangaId}/new-chapter`)}
           >
@@ -140,22 +140,48 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.chaptersCard}>
-          <View style={styles.emptyIconContainer}>
-            <Feather name="plus" size={32} color="#D8708E" />
+        {(!manga?.chaptersData || manga.chaptersData.length === 0) ? (
+          <View style={styles.chaptersCard}>
+            <View style={styles.emptyIconContainer}>
+              <Feather name="plus" size={32} color="#D8708E" />
+            </View>
+            <Text style={styles.emptyChaptersTitle}>Aún no tienes capítulos</Text>
+            <Text style={styles.emptyChaptersSubtitle}>
+              Comienza a publicar tu historia subiendo el primer capítulo
+            </Text>
+
+            <TouchableOpacity
+              style={styles.primaryActionButton}
+              onPress={() => router.push(`/manage-webcomic/${mangaId}/new-chapter`)}
+            >
+              <Text style={styles.primaryActionButtonText}>Subir primer capítulo</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.emptyChaptersTitle}>Aún no tienes capítulos</Text>
-          <Text style={styles.emptyChaptersSubtitle}>
-            Comienza a publicar tu historia subiendo el primer capítulo
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.primaryActionButton}
-            onPress={() => router.push(`/manage-webcomic/${mangaId}/new-chapter`)}
-          >
-            <Text style={styles.primaryActionButtonText}>Subir primer capítulo</Text>
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.chaptersList}>
+            {manga.chaptersData.map((chapter, index) => (
+              <View key={chapter.id || index} style={styles.chapterItem}>
+                <View style={styles.chapterNumber}>
+                  <Text style={styles.chapterNumberText}>Cap. {chapter.chapterNumber}</Text>
+                </View>
+                <View style={styles.chapterInfo}>
+                  <Text style={styles.chapterTitle}>{chapter.title}</Text>
+                  <Text style={styles.chapterDate}>
+                    {chapter.publishedAt ? new Date(chapter.publishedAt).toLocaleDateString('es-ES') : 'Publicado'}
+                  </Text>
+                </View>
+                <View style={styles.chapterMeta}>
+                  {chapter.premium && (
+                    <View style={styles.premiumBadge}>
+                      <Text style={styles.premiumText}>Premium</Text>
+                    </View>
+                  )}
+                  <Feather name="chevron-right" size={20} color="#D8708E" />
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Creator Management */}
         <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 16 }]}>Gestión del creador</Text>
@@ -408,5 +434,60 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1A1A2E',
     fontWeight: '600',
+  },
+  chaptersList: {
+    gap: 12,
+  },
+  chapterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
+  },
+  chapterNumber: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#FDF0F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chapterNumberText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#D8708E',
+  },
+  chapterInfo: {
+    flex: 1,
+  },
+  chapterTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    marginBottom: 4,
+  },
+  chapterDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  chapterMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  premiumBadge: {
+    backgroundColor: '#FFE5CC',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  premiumText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#FF9800',
   },
 });
