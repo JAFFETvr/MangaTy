@@ -74,9 +74,21 @@ export default function SettingsScreen() {
           text: 'Cerrar sesión',
           style: 'destructive',
           onPress: async () => {
-            await viewModel.performLogout();
-            // @ts-ignore - expo-router strict types
-            router.replace('/(auth)');
+            try {
+              console.log('🚪 Iniciando logout...');
+              await viewModel.performLogout();
+              console.log('🚪 Logout completado, redirigiendo...');
+
+              // Limpiar AsyncStorage de datos sensibles
+              await AsyncStorage.removeItem('auth_token');
+              await AsyncStorage.removeItem('auth_user');
+
+              // Redirigir a login
+              router.replace('/(auth)/login');
+            } catch (error) {
+              console.error('❌ Error en logout:', error);
+              Alert.alert('Error', 'No se pudo cerrar sesión correctamente');
+            }
           },
         },
       ]
