@@ -8,6 +8,7 @@ import { User } from '../../domain/entities';
 import { httpClient } from '@/src/core/http/http-client';
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
+import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
 
 interface WalletBalance {
   userId: string;
@@ -22,8 +23,9 @@ export class UserRemoteDataSource {
         return null;
       }
 
-      // Obtener el username guardado desde el registro
+      // Obtener username y email guardados desde el registro
       const username = await AsyncStorage.getItem(STORAGE_KEY_USERNAME);
+      const email = await AsyncStorage.getItem(STORAGE_KEY_EMAIL);
 
       // Fetch wallet balance to get user's TyCoins
       const balance = await httpClient.get<WalletBalance>('/wallet/balance');
@@ -31,7 +33,7 @@ export class UserRemoteDataSource {
       return {
         id: auth.userId,
         name: username || 'Mi Perfil',
-        email: '',
+        email: email || '',
         coinBalance: balance.tyCoins,
         memberSince: new Date(),
         stats: {

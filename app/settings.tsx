@@ -9,6 +9,7 @@ import {
   Image,
   Modal,
   Pressable,
+  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +31,10 @@ export default function SettingsScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showAdultWarning, setShowAdultWarning] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
@@ -75,6 +80,33 @@ export default function SettingsScreen() {
           },
         },
       ]
+    );
+  };
+
+  const handleChangePassword = () => {
+    if (!currentPassword.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu contraseña actual');
+      return;
+    }
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'La nueva contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    // TODO: Implementar cambio de contraseña en el backend cuando esté disponible
+    Alert.alert(
+      'Éxito',
+      'Tu contraseña ha sido cambiada correctamente',
+      [{ text: 'OK', onPress: () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPasswordModal(false);
+      }}]
     );
   };
 
@@ -216,12 +248,12 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Otras opciones</Text>
           {[
-            { label: 'Cambiar contraseña', icon: 'lock' },
-            { label: 'Privacidad', icon: 'shield' },
-            { label: 'Notificaciones', icon: 'bell' },
+            { label: 'Cambiar contraseña', icon: 'lock', action: () => setShowPasswordModal(true) },
+            { label: 'Privacidad', icon: 'shield', action: () => Alert.alert('Privacidad', 'Pronto disponible') },
+            { label: 'Notificaciones', icon: 'bell', action: () => Alert.alert('Notificaciones', 'Pronto disponible') },
           ].map((item, idx, arr) => (
             <View key={item.label}>
-              <TouchableOpacity style={styles.optionRow}>
+              <TouchableOpacity style={styles.optionRow} onPress={item.action}>
                 <Text style={styles.optionLabel}>{item.label}</Text>
                 <Feather name="chevron-right" size={18} color="#CCC" />
               </TouchableOpacity>
@@ -264,6 +296,76 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
       </ScrollView>
+
+      {/* ─── Modal Cambiar Contraseña ─── */}
+      <Modal
+        visible={showPasswordModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPasswordModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+
+            <Text style={styles.modalTitle}>Cambiar contraseña</Text>
+            <Text style={styles.modalSubtitle}>Actualiza tu contraseña para mantener tu cuenta segura</Text>
+
+            {/* Contraseña actual */}
+            <Text style={styles.inputLabel}>Contraseña actual</Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Ingresa tu contraseña actual"
+              secureTextEntry
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholderTextColor="#CCC"
+            />
+
+            {/* Nueva contraseña */}
+            <Text style={[styles.inputLabel, { marginTop: 16 }]}>Nueva contraseña</Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Mínimo 8 caracteres"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholderTextColor="#CCC"
+            />
+            {newPassword && (
+              <Text style={[styles.hintText, { marginTop: 6 }]}>
+                {newPassword.length < 8 ? `${8 - newPassword.length} caracteres más necesarios` : '✓ Contraseña válida'}
+              </Text>
+            )}
+
+            {/* Confirmar contraseña */}
+            <Text style={[styles.inputLabel, { marginTop: 16 }]}>Confirmar nueva contraseña</Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Repite tu nueva contraseña"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholderTextColor="#CCC"
+            />
+            {confirmPassword && (
+              <Text style={[styles.hintText, { marginTop: 6 }]}>
+                {confirmPassword !== newPassword ? '✗ No coinciden' : '✓ Coinciden'}
+              </Text>
+            )}
+
+            {/* Botones */}
+            <View style={styles.passwordButtonRow}>
+              <TouchableOpacity style={styles.passwordCancelBtn} onPress={() => setShowPasswordModal(false)}>
+                <Text style={styles.passwordCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.passwordConfirmBtn} onPress={handleChangePassword}>
+                <Text style={styles.passwordConfirmText}>Cambiar contraseña</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ─── Modal Advertencia +18 ─── */}
       <Modal
@@ -648,6 +750,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   adultConfirmText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+
+  // ─── Modal Cambiar Contraseña ───
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    marginBottom: 8,
+  },
+  passwordInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1A1A2E',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#D8708E',
+    fontWeight: '500',
+  },
+  passwordButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  passwordCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  passwordCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A2E',
+  },
+  passwordConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#D8708E',
+    alignItems: 'center',
+  },
+  passwordConfirmText: {
     fontSize: 15,
     fontWeight: 'bold',
     color: '#FFFFFF',
