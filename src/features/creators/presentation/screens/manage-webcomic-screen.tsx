@@ -60,7 +60,13 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
           <Feather name="arrow-left" size={24} color="#1A1A2E" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mi Webcomic</Text>
-        <TouchableOpacity style={styles.headerIcon}>
+        <TouchableOpacity
+          style={styles.headerIcon}
+          onPress={() => router.push({
+            pathname: `/manage-webcomic/[id]/edit-info`,
+            params: { id: mangaId, slug: slug }
+          })}
+        >
           <Feather name="edit-3" size={22} color="#1A1A2E" />
         </TouchableOpacity>
       </View>
@@ -71,9 +77,12 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
         <View style={styles.infoSection}>
           <View style={styles.coverPlaceholder}>
             {manga?.coverImagePath ? (
-              <Image 
-                source={{ uri: buildCoverUrl(manga.coverImagePath) }} 
-                style={styles.coverImage} 
+              <Image
+                source={{ uri: manga.coverImagePath.startsWith('file://')
+                  ? manga.coverImagePath
+                  : buildCoverUrl(manga.coverImagePath)
+                }}
+                style={styles.coverImage}
               />
             ) : (
               <Text style={styles.placeholderText}>Sin portada</Text>
