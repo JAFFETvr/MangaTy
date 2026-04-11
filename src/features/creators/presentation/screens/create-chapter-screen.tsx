@@ -33,13 +33,17 @@ export default function CreateChapterScreen({ mangaId }: Props) {
 
     if (state.success) {
       Alert.alert('¡Éxito!', 'Capítulo publicado correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => {
+          viewModel.reset();
+          router.back();
+        }}
       ]);
-      viewModel.reset();
     }
 
     if (state.error) {
-      Alert.alert('Error', state.error);
+      Alert.alert('Error', state.error, [
+        { text: 'OK', onPress: () => viewModel.resetError() }
+      ]);
     }
 
     return unsubscribe;

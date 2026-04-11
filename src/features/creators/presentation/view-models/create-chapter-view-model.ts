@@ -50,17 +50,22 @@ export class CreateChapterViewModel {
     this.updateState({ isLoading: true, error: null });
 
     try {
+      console.log('📝 Publicando capítulo para mangaId:', mangaId);
+
       // Obtener webcomics del cache local
       const storedStr = await AsyncStorage.getItem('@mock_created_webcomics');
       if (!storedStr) {
-        throw new Error('Comic no encontrado');
+        throw new Error('Comic no encontrado - almacenamiento vacío');
       }
 
       const webcomics = JSON.parse(storedStr);
+      console.log('📚 Comics encontrados:', webcomics.length);
+
       const comicIndex = webcomics.findIndex((w: any) => w.id === mangaId);
+      console.log('🔍 Comic encontrado en índice:', comicIndex);
 
       if (comicIndex === -1) {
-        throw new Error('Comic no encontrado');
+        throw new Error(`Comic no encontrado - ID buscado: ${mangaId}`);
       }
 
       // Crear nuevo capítulo
@@ -74,6 +79,8 @@ export class CreateChapterViewModel {
         pages: images,
       };
 
+      console.log('✍️ Nuevo capítulo creado:', newChapter);
+
       // Agregar capítulo al comic
       if (!webcomics[comicIndex].chapters) {
         webcomics[comicIndex].chapters = [];
@@ -82,9 +89,11 @@ export class CreateChapterViewModel {
 
       // Guardar cambios
       await AsyncStorage.setItem('@mock_created_webcomics', JSON.stringify(webcomics));
+      console.log('💾 Capítulo guardado en AsyncStorage');
 
       this.updateState({ isLoading: false, success: true });
     } catch (error) {
+      console.error('❌ Error al publicar capítulo:', error);
       this.updateState({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Ocurrió un error al publicar el capítulo'
@@ -94,6 +103,10 @@ export class CreateChapterViewModel {
 
   reset() {
     this.stateSubject.setValue(initialState);
+  }
+
+  resetError() {
+    this.updateState({ error: null });
   }
 
   private updateState(partial: Partial<CreateChapterState>) {
