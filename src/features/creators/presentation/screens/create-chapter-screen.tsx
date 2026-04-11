@@ -29,9 +29,13 @@ export default function CreateChapterScreen({ mangaId }: Props) {
   );
   const [state, setState] = useState(viewModel.getState());
 
+  // TODOS LOS HOOKS AL INICIO, ANTES DE CUALQUIER OTRO CÓDIGO
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
+    return () => unsubscribe();
+  }, [viewModel]);
 
+  useEffect(() => {
     if (state.success) {
       Alert.alert('¡Éxito!', 'Capítulo publicado correctamente', [
         { text: 'OK', onPress: () => {
@@ -40,16 +44,17 @@ export default function CreateChapterScreen({ mangaId }: Props) {
         }}
       ]);
     }
+  }, [state.success]);
 
+  useEffect(() => {
     if (state.error) {
       Alert.alert('Error', state.error, [
         { text: 'OK', onPress: () => viewModel.resetError() }
       ]);
     }
+  }, [state.error]);
 
-    return () => unsubscribe();
-  }, [state.success, state.error]);
-
+  // AHORA las funciones y el rest del código
   const pickImages = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
