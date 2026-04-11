@@ -160,7 +160,14 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
         ) : (
           <View style={styles.chaptersList}>
             {manga.chaptersData.map((chapter, index) => (
-              <View key={chapter.id || index} style={styles.chapterItem}>
+              <TouchableOpacity
+                key={chapter.id || index}
+                style={styles.chapterItem}
+                onPress={() => router.push({
+                  pathname: `/manage-webcomic/[id]/chapter-viewer`,
+                  params: { id: mangaId, chapterId: chapter.id }
+                })}
+              >
                 <View style={styles.chapterNumber}>
                   <Text style={styles.chapterNumberText}>Cap. {chapter.chapterNumber}</Text>
                 </View>
@@ -178,7 +185,7 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
                   )}
                   <Feather name="chevron-right" size={20} color="#D8708E" />
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
