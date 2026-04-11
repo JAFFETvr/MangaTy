@@ -19,6 +19,14 @@ export class MangaRemoteDataSource {
    * @param mangaId – campo `id` (UUID) del listado (GET /api/comics/{id}/chapters)
    */
   async getMangaDetail(slug: string, mangaId: string): Promise<Manga> {
+    // Detectar si es un webcomic local (slug comienza con "manga-")
+    const isLocalWebcomic = slug.startsWith('manga-');
+
+    if (isLocalWebcomic) {
+      // Ir directo a AsyncStorage para webcomics locales
+      return this.getMangaDetailFromCache(mangaId);
+    }
+
     try {
       const [comicRes, chaptersRes] = await Promise.all([
         fetch(`${API_BASE}/comics/${slug}`),
