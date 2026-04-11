@@ -1,5 +1,6 @@
 import { StateFlow } from '@/src/shared/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 export interface CreateChapterState {
   title: string;
@@ -52,6 +53,21 @@ export class CreateChapterViewModel {
     try {
       console.log('📝 Publicando capítulo para mangaId:', mangaId);
 
+      // Convertir imágenes a base64 para persistencia
+      const persistedImages: string[] = [];
+      for (const imageUri of images) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          persistedImages.push(`data:image/jpeg;base64,${base64}`);
+        } catch (error) {
+          console.error('Error converting image:', error);
+          // Si falla la conversión, usar el URI original
+          persistedImages.push(imageUri);
+        }
+      }
+
       // Obtener webcomics del cache local
       const storedStr = await AsyncStorage.getItem('@mock_created_webcomics');
       if (!storedStr) {
@@ -68,7 +84,7 @@ export class CreateChapterViewModel {
         throw new Error(`Comic no encontrado - ID buscado: ${mangaId}`);
       }
 
-      // Crear nuevo capítulo
+      // Crear nuevo capítulo CON IMÁGENES PERSISTIDAS
       const newChapter = {
         id: `chapter-${Date.now()}`,
         chapterNumber: (webcomics[comicIndex].chapters?.length || 0) + 1,
@@ -76,10 +92,10 @@ export class CreateChapterViewModel {
         premium: false,
         priceTyCoins: 0,
         publishedAt: new Date().toISOString(),
-        pages: images,
+        pages: persistedImages, // Usar imágenes en base64
       };
 
-      console.log('✍️ Nuevo capítulo creado:', newChapter);
+      console.log('✍️ Nuevo capítulo creado con', persistedImages.length, 'páginas');
 
       // Agregar capítulo al comic
       if (!webcomics[comicIndex].chapters) {
