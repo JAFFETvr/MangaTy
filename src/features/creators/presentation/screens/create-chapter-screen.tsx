@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { CreateChapterViewModel } from '../view-models/create-chapter-view-model';
 
@@ -58,11 +59,21 @@ export default function CreateChapterScreen({ mangaId }: Props) {
       });
 
       if (!result.cancelled) {
-        result.assets?.forEach(asset => {
+        for (const asset of result.assets || []) {
           if (asset.uri) {
-            viewModel.addImage(asset.uri);
+            try {
+              // Convertir imagen a base64 para persistencia
+              const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              const dataUri = `data:image/jpeg;base64,${base64}`;
+              viewModel.addImage(dataUri);
+            } catch (error) {
+              console.error('Error converting image to base64:', error);
+              Alert.alert('Error', 'No se pudo procesar la imagen');
+            }
           }
-        });
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo seleccionar las imágenes');

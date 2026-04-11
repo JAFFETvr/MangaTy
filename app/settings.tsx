@@ -12,6 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -58,9 +59,22 @@ export default function SettingsScreen() {
   }, [user?.email]);
 
   const savePhoto = async (uri: string) => {
-    setPhotoUri(uri);
-    if (user?.email) {
-      await AsyncStorage.setItem(getPhotoStorageKey(user.email), uri);
+    try {
+      // Si es un file:// URI, convertir a base64
+      let dataUri = uri;
+      if (uri.startsWith('file://')) {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        dataUri = `data:image/jpeg;base64,${base64}`;
+      }
+      setPhotoUri(dataUri);
+      if (user?.email) {
+        await AsyncStorage.setItem(getPhotoStorageKey(user.email), dataUri);
+      }
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      Alert.alert('Error', 'No se pudo guardar la foto');
     }
   };
 

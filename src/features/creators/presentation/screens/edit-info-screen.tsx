@@ -58,6 +58,11 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
     );
   }
 
+  useEffect(() => {
+    console.log('🎬 [EditInfoScreen] Montado - slug:', slug, 'mangaId:', mangaId);
+    return () => console.log('🎬 [EditInfoScreen] Desmontado');
+  }, []);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
