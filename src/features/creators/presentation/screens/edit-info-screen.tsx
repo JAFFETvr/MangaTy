@@ -48,7 +48,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
       Alert.alert('Error', state.error);
       viewModel.resetStatus();
     }
-  }, [state.success, state.error]);
+  }, [state.success, state.error, viewModel]);
 
   if (state.isLoading && !state.manga) {
     return (

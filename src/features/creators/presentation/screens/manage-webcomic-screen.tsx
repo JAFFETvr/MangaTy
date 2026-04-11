@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { ManageWebcomicViewModel } from '../view-models/manage-webcomic-view-model';
 import { buildCoverUrl } from '@/src/core/api/api-config';
@@ -35,6 +35,13 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
     viewModel.loadMangaDetails(slug, mangaId);
     return unsubscribe;
   }, [viewModel, slug, mangaId]);
+
+  // Recargar datos cuando la pantalla vuelve a estar visible (ej: después de editar)
+  useFocusEffect(
+    useCallback(() => {
+      viewModel.loadMangaDetails(slug, mangaId);
+    }, [viewModel, slug, mangaId])
+  );
 
   const stats = [
     { label: 'Vistas', value: state.stats.views, icon: 'eye' },
