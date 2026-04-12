@@ -21,17 +21,11 @@ export interface MonetizationState {
 const initialState: MonetizationState = {
   isLoading: false,
   isConnectedWithStripe: false,
-  totalBalance: 420.00,
-  availableBalance: 320.00,
-  pendingBalance: 100.00,
-  monthlyGrowth: '+22.1%',
-  transactions: [
-    { id: '1', type: 'Venta de capítulo', amount: 45.00, date: '1 Abr 2026', status: 'Completado' },
-    { id: '2', type: 'Venta de capítulo', amount: 120.00, date: '2 Abr 2026', status: 'Completado' },
-    { id: '3', type: 'Venta de capítulo', amount: 30.00, date: '3 Abr 2026', status: 'Completado' },
-    { id: '4', type: 'Venta de capítulo', amount: 85.00, date: '4 Abr 2026', status: 'Completado' },
-    { id: '5', type: 'Venta de capítulo', amount: 60.00, date: '5 Abr 2026', status: 'Procesando' },
-  ],
+  totalBalance: 0.00,
+  availableBalance: 0.00,
+  pendingBalance: 0.00,
+  monthlyGrowth: '+0%',
+  transactions: [],
 };
 
 export class MonetizationViewModel {

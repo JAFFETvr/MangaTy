@@ -59,11 +59,11 @@ export default function CreateChapterScreen({ mangaId }: Props) {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultiple: true,
+        allowsMultipleSelection: true,
         quality: 0.8,
       });
 
-      if (!result.cancelled && result.assets) {
+      if (!result.canceled && result.assets) {
         for (const asset of result.assets) {
           if (asset.uri) {
             viewModel.addImage(asset.uri);

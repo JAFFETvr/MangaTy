@@ -108,7 +108,7 @@ export class MangaRemoteDataSource {
         title: webcomic.title,
         slug: `manga-${webcomic.id}`,
         synopsis: webcomic.description,
-        genre: webcomic.genres && webcomic.genres.length > 0 ? webcomic.genres[0] : '',
+        genre: webcomic.genres ? webcomic.genres.join(', ') : '',
         mature: false,
         viewsCount: 0,
         coverImagePath: webcomic.coverImage || '',

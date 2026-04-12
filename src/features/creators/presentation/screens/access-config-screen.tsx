@@ -149,24 +149,6 @@ export default function AccessConfigScreen({ mangaId }: Props) {
           <View style={styles.switchItem}>
             <View style={styles.switchText}>
               <View style={styles.labelWithIcon}>
-                <Feather name="users" size={18} color="#666" style={{ marginRight: 8 }} />
-                <Text style={styles.switchLabel}>Permitir comentarios</Text>
-              </View>
-              <Text style={styles.switchDesc}>Los lectores pueden comentar</Text>
-            </View>
-            <Switch 
-              value={state.allowComments} 
-              onValueChange={(val) => viewModel.setAllowComments(val)}
-              trackColor={{ false: '#EEE', true: '#E2919E' }}
-              thumbColor={state.allowComments ? '#FFF' : '#FFF'}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.switchItem}>
-            <View style={styles.switchText}>
-              <View style={styles.labelWithIcon}>
                 <Feather name="share-2" size={18} color="#666" style={{ marginRight: 8 }} />
                 <Text style={styles.switchLabel}>Permitir compartir</Text>
               </View>

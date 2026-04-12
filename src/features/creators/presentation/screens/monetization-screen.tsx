@@ -87,26 +87,33 @@ export default function MonetizationScreen({ mangaId }: Props) {
         {/* History Section */}
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Historial de ganancias</Text>
         <View style={styles.historyList}>
-          {state.transactions.map((t) => (
-            <View key={t.id} style={styles.historyItem}>
-              <View style={[styles.historyIcon, { backgroundColor: t.status === 'Completado' ? '#E8F5E9' : '#FFF8E1' }]}>
-                <Feather name="dollar-sign" size={20} color={t.status === 'Completado' ? '#27AE60' : '#F2994A'} />
-              </View>
-              <View style={styles.historyInfo}>
-                <Text style={styles.historyTitle}>{t.type}</Text>
-                <View style={styles.historyMeta}>
-                  <Feather name="calendar" size={12} color="#999" />
-                  <Text style={styles.historyDate}>{t.date}</Text>
+          {state.transactions.length > 0 ? (
+            state.transactions.map((t) => (
+              <View key={t.id} style={styles.historyItem}>
+                <View style={[styles.historyIcon, { backgroundColor: t.status === 'Completado' ? '#E8F5E9' : '#FFF8E1' }]}>
+                  <Feather name="dollar-sign" size={20} color={t.status === 'Completado' ? '#27AE60' : '#F2994A'} />
+                </View>
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyTitle}>{t.type}</Text>
+                  <View style={styles.historyMeta}>
+                    <Feather name="calendar" size={12} color="#999" />
+                    <Text style={styles.historyDate}>{t.date}</Text>
+                  </View>
+                </View>
+                <View style={styles.historyAmountContainer}>
+                  <Text style={styles.historyAmount}>+${t.amount.toFixed(2)}</Text>
+                  <Text style={[styles.historyStatus, { color: t.status === 'Completado' ? '#27AE60' : '#F2994A' }]}>
+                    {t.status}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.historyAmountContainer}>
-                <Text style={styles.historyAmount}>+${t.amount.toFixed(2)}</Text>
-                <Text style={[styles.historyStatus, { color: t.status === 'Completado' ? '#27AE60' : '#F2994A' }]}>
-                  {t.status}
-                </Text>
-              </View>
+            ))
+          ) : (
+            <View style={styles.emptyHistory}>
+              <Feather name="clock" size={32} color="#FEEBED" />
+              <Text style={styles.emptyHistoryText}>Aún no tiene ganancias en su historial</Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Withdraw Section */}
@@ -383,5 +390,21 @@ const styles = StyleSheet.create({
       fontSize: 12,
       color: '#666',
       lineHeight: 16,
-  }
+  },
+  emptyHistory: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FEEBED',
+    borderStyle: 'dashed',
+  },
+  emptyHistoryText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#D1A2AC',
+    fontWeight: '500',
+  },
 });

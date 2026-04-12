@@ -9,12 +9,14 @@ import { GetUser, Logout, UpdateUser } from '../../domain/use-cases';
 export interface ProfileViewModelState {
   user: User | null;
   isLoading: boolean;
+  isSaving: boolean;
   error: string | null;
 }
 
 const initialState: ProfileViewModelState = {
   user: null,
   isLoading: false,
+  isSaving: false,
   error: null,
 };
 
@@ -46,6 +48,24 @@ export class ProfileViewModel {
         error: 'Error al cargar perfil',
         isLoading: false,
       });
+    }
+  }
+
+  async updateName(newName: string): Promise<boolean> {
+    this.updateState({ isSaving: true, error: null });
+    try {
+      const updatedUser = await this.updateUser.execute({ name: newName });
+      this.updateState({
+        user: updatedUser,
+        isSaving: false,
+      });
+      return true;
+    } catch (error) {
+      this.updateState({
+        error: 'Error al actualizar el nombre',
+        isSaving: false,
+      });
+      return false;
     }
   }
 

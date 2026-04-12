@@ -8,7 +8,6 @@ export interface AccessConfigState {
   isSaving: boolean;
   accessLevel: AccessLevel;
   ageRating: AgeRating;
-  allowComments: boolean;
   allowSharing: boolean;
   success: boolean;
   error: string | null;
@@ -19,7 +18,6 @@ const initialState: AccessConfigState = {
   isSaving: false,
   accessLevel: 'public',
   ageRating: 'all',
-  allowComments: true,
   allowSharing: true,
   success: false,
   error: null,
@@ -39,10 +37,6 @@ export class AccessConfigViewModel {
 
   setAgeRating(rating: AgeRating) {
     this.updateState({ ageRating: rating });
-  }
-
-  setAllowComments(allow: boolean) {
-    this.updateState({ allowComments: allow });
   }
 
   setAllowSharing(allow: boolean) {

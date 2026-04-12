@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AVAILABLE_GENRES, EditWebcomicViewModel } from '../view-models/edit-webcomic-view-model';
 
@@ -58,6 +59,18 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
     return () => console.log('🎬 [EditInfoScreen] Desmontado');
   }, []);
 
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [2, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      viewModel.setBannerImage(result.assets[0].uri);
+    }
+  };
+
   // AHORA sí puede haber early return después de todos los hooks
   if (state.isLoading && !state.manga) {
     return (
@@ -85,7 +98,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
         
         {/* Cover Section */}
         <Text style={styles.sectionLabel}>Portada del webcomic</Text>
-        <TouchableOpacity style={styles.uploadArea}>
+        <TouchableOpacity style={styles.uploadArea} onPress={pickImage}>
           {state.form.bannerImage ? (
             <Image 
               source={{ uri: buildCoverUrl(state.form.bannerImage) }} 

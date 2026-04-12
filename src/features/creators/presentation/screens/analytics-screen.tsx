@@ -80,21 +80,28 @@ export default function AnalyticsScreen({ slug, mangaId }: Props) {
         <Text style={styles.sectionTitle}>Capítulos más populares</Text>
         
         <View style={styles.popularList}>
-          {state.popularChapters.map((cap, i) => (
-            <View key={cap.id} style={styles.popularItem}>
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankText}>{i + 1}</Text>
-              </View>
-              <View style={styles.popularInfo}>
-                <Text style={styles.popularTitle}>Cap. {cap.number}</Text>
-                <View style={styles.popularStats}>
-                  <Feather name="eye" size={12} color="#999" />
-                  <Text style={styles.popularStatText}>{cap.views} vistas</Text>
-                  <Text style={styles.popularStatText}>$ ${cap.earnings}</Text>
+          {state.popularChapters.length > 0 ? (
+            state.popularChapters.map((cap, i) => (
+              <View key={cap.id} style={styles.popularItem}>
+                <View style={styles.rankBadge}>
+                  <Text style={styles.rankText}>{i + 1}</Text>
+                </View>
+                <View style={styles.popularInfo}>
+                  <Text style={styles.popularTitle}>Cap. {cap.number}</Text>
+                  <View style={styles.popularStats}>
+                    <Feather name="eye" size={12} color="#999" />
+                    <Text style={styles.popularStatText}>{cap.views} vistas</Text>
+                    <Text style={styles.popularStatText}>$ ${cap.earnings}</Text>
+                  </View>
                 </View>
               </View>
+            ))
+          ) : (
+            <View style={styles.emptyView}>
+              <Feather name="bar-chart-2" size={40} color="#FEEBED" />
+              <Text style={styles.emptyText}>Aún no hay datos de capítulos</Text>
             </View>
-          ))}
+          )}
         </View>
 
         <View style={{ height: 40 }} />
@@ -221,5 +228,21 @@ const styles = StyleSheet.create({
   popularStatText: {
     fontSize: 12,
     color: '#999',
+  },
+  emptyView: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FEEBED',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#D1A2AC',
+    fontWeight: '500',
   },
 });

@@ -58,7 +58,7 @@ export class CreateChapterViewModel {
       for (const imageUri of images) {
         try {
           const base64 = await FileSystem.readAsStringAsync(imageUri, {
-            encoding: FileSystem.EncodingType.Base64,
+            encoding: 'base64',
           });
           persistedImages.push(`data:image/jpeg;base64,${base64}`);
         } catch (error) {

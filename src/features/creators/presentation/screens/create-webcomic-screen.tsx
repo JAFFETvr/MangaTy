@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 const GENRES = [
   'Drama', 'Romance', 'GL', 'BL', 'Acción', 'Comedia',
@@ -348,12 +349,26 @@ export default function CreateWebcomicScreen() {
             disabled={!isFormValid}
             activeOpacity={0.8}
             onPress={async () => {
+              // Persistir imagen
+              let persistedCover = coverImage;
+              if (persistedCover && persistedCover.startsWith('file://')) {
+                try {
+                  const base64 = await FileSystem.readAsStringAsync(persistedCover, {
+                    encoding: 'base64',
+                  });
+                  persistedCover = `data:image/jpeg;base64,${base64}`;
+                } catch (e) {
+                  console.error('Error persisting cover:', e);
+                }
+              }
+
               const newWebcomic = {
                 id: Date.now().toString(),
                 title,
                 description,
                 genres: selectedGenres,
-                coverImage,
+                coverImage: persistedCover,
+                chapters: [],
               };
               const storedStr = await AsyncStorage.getItem('@mock_created_webcomics');
               const stored = storedStr ? JSON.parse(storedStr) : [];

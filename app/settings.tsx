@@ -28,21 +28,39 @@ export default function SettingsScreen() {
     serviceLocator.get(DIKeys.PROFILE_VIEW_MODEL)
   );
   const [state, setState] = useState(viewModel.getState());
-  const [adultContent, setAdultContent] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [showAdultWarning, setShowAdultWarning] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Username editing state
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [tempUsername, setTempUsername] = useState('');
+  const [lastUsernameChange, setLastUsernameChange] = useState<number | null>(null);
+  
+  // Toast state
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'warning' | 'error' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 3000);
+  };
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
     viewModel.loadUser();
-    // Cargar preferencia de adultos guardada
-    AsyncStorage.getItem('@mangaty_adult_content').then((adult) => {
-      if (adult === 'true') setAdultContent(true);
+
+    // Cargar última fecha de cambio de nombre
+    AsyncStorage.getItem('@mangaty_last_username_change').then((timestamp) => {
+      if (timestamp) setLastUsernameChange(parseInt(timestamp));
     });
     return unsubscribe;
   }, [viewModel]);
@@ -149,6 +167,44 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleSaveUsername = async () => {
+    if (!tempUsername.trim()) {
+      showToast('El nombre de usuario no puede estar vacío', 'error');
+      return;
+    }
+
+    // Verificar restricción de 7 días (604800000 ms)
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    if (lastUsernameChange && now - lastUsernameChange < ONE_WEEK_MS) {
+      const daysLeft = Math.ceil((ONE_WEEK_MS - (now - lastUsernameChange)) / (24 * 60 * 60 * 1000));
+      showToast(`Podrás cambiarlo de nuevo en aproximadamente ${daysLeft} día(s)`, 'warning');
+      return;
+    }
+
+    const success = await viewModel.updateName(tempUsername.trim());
+    if (success) {
+      const timestamp = Date.now();
+      setLastUsernameChange(timestamp);
+      await AsyncStorage.setItem('@mangaty_last_username_change', timestamp.toString());
+      setIsEditingUsername(false);
+      showToast('Nombre de usuario actualizado', 'success');
+    }
+  };
+
+  const handleEditUsername = () => {
+    // Si hay restricción, informar antes de dejar editar
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    if (lastUsernameChange && now - lastUsernameChange < ONE_WEEK_MS) {
+        const daysLeft = Math.ceil((ONE_WEEK_MS - (now - lastUsernameChange)) / (24 * 60 * 60 * 1000));
+        showToast(`Editar disponible en ${daysLeft} día(s)`, 'warning');
+        return;
+    }
+    setTempUsername(user?.name || '');
+    setIsEditingUsername(true);
+  };
+
   const pickFromGallery = async () => {
     setShowPhotoModal(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -235,16 +291,50 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Text style={styles.cardTitle}>Nombre de usuario</Text>
-            <TouchableOpacity>
-              <Text style={styles.editLink}>Editar</Text>
-            </TouchableOpacity>
+            {!isEditingUsername && (
+              <TouchableOpacity onPress={handleEditUsername}>
+                <Text style={styles.editLink}>Editar</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <View style={styles.usernameRow}>
-            <Feather name="user" size={16} color="#999" style={{ marginRight: 8 }} />
-            <Text style={styles.usernameText}>
-              {user?.name && user.name !== 'Usuario' ? user.name : 'Sin nombre'}
-            </Text>
-          </View>
+
+          {isEditingUsername ? (
+            <View style={styles.editUsernameContainer}>
+              <TextInput
+                style={styles.usernameInput}
+                value={tempUsername}
+                onChangeText={setTempUsername}
+                placeholder="Nuevo nombre de usuario"
+                autoFocus
+                maxLength={20}
+              />
+              <View style={styles.editButtonsRow}>
+                <TouchableOpacity 
+                  style={styles.cancelNameBtn} 
+                  onPress={() => setIsEditingUsername(false)}
+                >
+                  <Text style={styles.cancelNameText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.saveNameBtn, state.isSaving && { opacity: 0.6 }]} 
+                  onPress={handleSaveUsername}
+                  disabled={state.isSaving}
+                >
+                  <Text style={styles.saveNameText}>
+                    {state.isSaving ? 'Guardando...' : 'Guardar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.usernameRow}>
+              <Feather name="user" size={16} color="#999" style={{ marginRight: 8 }} />
+              <Text style={styles.usernameText}>
+                {user?.name && user.name !== 'Usuario' ? user.name : 'Sin nombre'}
+              </Text>
+            </View>
+          )}
+
           <Text style={styles.hintText}>
             Puedes cambiar tu nombre de usuario. Recuerda que solo podrás hacerlo una vez cada 1 semana.
           </Text>
@@ -288,8 +378,8 @@ export default function SettingsScreen() {
           <Text style={styles.cardTitle}>Otras opciones</Text>
           {[
             { label: 'Cambiar contraseña', icon: 'lock', action: () => setShowPasswordModal(true) },
-            { label: 'Privacidad', icon: 'shield', action: () => Alert.alert('Privacidad', 'Pronto disponible') },
-            { label: 'Notificaciones', icon: 'bell', action: () => Alert.alert('Notificaciones', 'Pronto disponible') },
+            { label: 'Privacidad', icon: 'shield', action: () => router.push('/privacy') },
+            { label: 'Notificaciones', icon: 'bell', action: () => router.push('/notifications') },
           ].map((item, idx, arr) => (
             <View key={item.label}>
               <TouchableOpacity style={styles.optionRow} onPress={item.action}>
@@ -301,33 +391,6 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* Contenido para Adultos */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Contenido para adultos</Text>
-          <View style={styles.adultRow}>
-            <Feather name="eye" size={20} color="#999" style={{ marginRight: 14 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adultLabel}>Permitir contenido para adultos</Text>
-              <TouchableOpacity
-                style={[styles.adultBadge, { backgroundColor: adultContent ? '#D8708E22' : '#F5F5F5' }]}
-                onPress={() => {
-                  if (!adultContent) {
-                    // Mostrar advertencia antes de habilitar
-                    setShowAdultWarning(true);
-                  } else {
-                    // Deshabilitar directo y borrar preferencia
-                    setAdultContent(false);
-                    AsyncStorage.removeItem('@mangaty_adult_content');
-                  }
-                }}
-              >
-                <Text style={[styles.adultBadgeText, { color: adultContent ? '#D8708E' : '#999' }]}>
-                  {adultContent ? 'Habilitado' : 'Deshabilitado'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
 
         {/* Cerrar Sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
@@ -406,70 +469,6 @@ export default function SettingsScreen() {
         </Pressable>
       </Modal>
 
-      {/* ─── Modal Advertencia +18 ─── */}
-      <Modal
-        visible={showAdultWarning}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAdultWarning(false)}
-      >
-        <View style={styles.adultOverlay}>
-          <View style={styles.adultModal}>
-            {/* Icono advertencia */}
-            <View style={styles.adultIconWrapper}>
-              <Text style={styles.adultIconText}>⚠️</Text>
-            </View>
-
-            <Text style={styles.adultModalTitle}>Advertencia de contenido +18</Text>
-            <Text style={styles.adultModalSubtitle}>
-              Estás a punto de habilitar contenido para adultos
-            </Text>
-
-            {/* Lista de confirmaciones */}
-            <View style={styles.adultConfirmBox}>
-              <Text style={styles.adultConfirmHeader}>Al continuar, confirmas que:</Text>
-              {[
-                'Eres mayor de 18 años',
-                'Comprendes que verás contenido clasificado para adultos',
-                'Podrás desactivar esta opción en cualquier momento',
-              ].map((item) => (
-                <View key={item} style={styles.adultBulletRow}>
-                  <View style={styles.adultBullet} />
-                  <Text style={styles.adultBulletText}>{item}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Nota importante */}
-            <View style={styles.adultNoteBox}>
-              <Text style={styles.adultNoteText}>
-                <Text style={{ fontWeight: '700' }}>Importante: </Text>
-                Esta configuración afectará el contenido que puedes ver en Mangaty. Asegúrate de estar en un entorno apropiado.
-              </Text>
-            </View>
-
-            {/* Botones */}
-            <View style={styles.adultButtonRow}>
-              <TouchableOpacity
-                style={styles.adultCancelBtn}
-                onPress={() => setShowAdultWarning(false)}
-              >
-                <Text style={styles.adultCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.adultConfirmBtn}
-                onPress={() => {
-                  setAdultContent(true);
-                  AsyncStorage.setItem('@mangaty_adult_content', 'true');
-                  setShowAdultWarning(false);
-                }}
-              >
-                <Text style={styles.adultConfirmText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* ─── Modal Personalizado: Cambiar Foto ─── */}
       <Modal
@@ -523,6 +522,19 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ─── Tostada Estética (Toast) ─── */}
+      {toast.visible && (
+        <View style={[styles.toastContainer, styles[`toast_${toast.type}`]]}>
+          <Feather 
+            name={toast.type === 'success' ? 'check-circle' : toast.type === 'warning' ? 'alert-circle' : 'x-circle'} 
+            size={18} 
+            color="#FFF" 
+            style={{ marginRight: 10 }}
+          />
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -592,9 +604,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   changePhotoBtnText: { fontSize: 13, color: '#1A1A2E', fontWeight: '500' },
-  usernameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  usernameRow: { flexDirection: 'row', alignItems: 'center' },
   usernameText: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
-  hintText: { fontSize: 12, color: '#AAA', lineHeight: 18 },
+  editUsernameContainer: { marginBottom: 10 },
+  usernameInput: {
+    backgroundColor: '#FCF0F3',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1A1A2E',
+    marginBottom: 12,
+  },
+  editButtonsRow: { flexDirection: 'row', gap: 10 },
+  saveNameBtn: {
+    flex: 1,
+    backgroundColor: '#D8708E',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  saveNameText: { color: '#FFFFFF', fontWeight: 'bold' },
+  cancelNameBtn: {
+    flex: 1,
+    backgroundColor: '#FCF0F3',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelNameText: { color: '#D8708E', fontWeight: '600' },
+  hintText: { fontSize: 12, color: '#AAA', lineHeight: 18, marginTop: 10 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10 },
   infoIcon: { marginRight: 12, marginTop: 2 },
   infoLabel: { fontSize: 12, color: '#AAA', marginBottom: 2 },
@@ -845,4 +884,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  // Toasts
+  toastContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    zIndex: 9999,
+  },
+  toast_success: { backgroundColor: '#27AE60' },
+  toast_warning: { backgroundColor: '#F2994A' },
+  toast_error: { backgroundColor: '#EB5757' },
+  toastText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
 });

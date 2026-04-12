@@ -2,6 +2,7 @@ import { Manga } from '@/src/features/manga/domain/entities';
 import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
 import { StateFlow } from '@/src/shared/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 export interface EditWebcomicState {
   manga: Manga | null;
@@ -80,6 +81,10 @@ export class EditWebcomicViewModel {
     this.updateForm({ description });
   }
 
+  setBannerImage(bannerImage: string) {
+    this.updateForm({ bannerImage });
+  }
+
   toggleGenre(genre: string) {
     const current = [...this.getState().form.selectedGenres];
     const index = current.indexOf(genre);
@@ -119,12 +124,26 @@ export class EditWebcomicViewModel {
         throw new Error('Comic no encontrado para actualizar');
       }
 
+      // Persistir imagen si es local
+      let persistedBanner = state.form.bannerImage;
+      if (persistedBanner && persistedBanner.startsWith('file://')) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(persistedBanner, {
+            encoding: 'base64',
+          });
+          persistedBanner = `data:image/jpeg;base64,${base64}`;
+        } catch (e) {
+          console.error('Error persisting banner:', e);
+        }
+      }
+
       // Actualizar el comic con los nuevos datos
       webcomics[comicIndex] = {
         ...webcomics[comicIndex],
         title: state.form.title,
         description: state.form.description,
         genres: state.form.selectedGenres,
+        coverImage: persistedBanner,
       };
 
       // Guardar cambios en AsyncStorage

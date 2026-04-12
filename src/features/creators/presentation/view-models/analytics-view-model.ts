@@ -26,23 +26,17 @@ export interface AnalyticsState {
 const initialState: AnalyticsState = {
   manga: null,
   isLoading: false,
-  totalViews: 2150,
-  followers: 342,
-  likes: 1856,
-  income: 420,
+  totalViews: 0,
+  followers: 0,
+  likes: 0,
+  income: 0,
   growth: {
-    views: '+12.5%',
-    followers: '+8.2%',
-    likes: '+15.3%',
-    income: '+22.1%',
+    views: '+0%',
+    followers: '+0%',
+    likes: '+0%',
+    income: '+0%',
   },
-  popularChapters: [
-    { id: '1', number: 1, views: 450, earnings: 120 },
-    { id: '2', number: 2, views: 380, earnings: 95 },
-    { id: '3', number: 3, views: 320, earnings: 80 },
-    { id: '4', number: 4, views: 280, earnings: 70 },
-    { id: '5', number: 5, views: 220, earnings: 55 },
-  ],
+  popularChapters: [],
 };
 
 export class AnalyticsViewModel {
@@ -65,7 +59,7 @@ export class AnalyticsViewModel {
       // Para este prototipo, mezclamos datos reales del manga con mocks de rendimiento
       this.updateState({
         manga,
-        totalViews: manga.viewsCount || 2150,
+        totalViews: manga.viewsCount || 0,
         isLoading: false,
       });
     } catch (error) {
