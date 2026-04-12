@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "MangaTY",
+    "slug": "mangaty",
+    "version": "1.0.0",
+    "scheme": "appmangaty",
+    "icon": "",
+    "splash": {
+      "image": "",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app necesita acceso a tu galería para cambiar tu foto de perfil.",
+          "cameraPermission": "La app necesita acceso a tu cámara para tomar una foto de perfil."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://api.angeldev.fun/api",
+      "stripeReturnUrl": "appmangaty://payment-success",
+      "stripeCancelUrl": "appmangaty://payment-cancel"
+    },
+    "android": {
+      "package": "com.mangaty.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "appmangaty"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.mangaty.app"
+    }
+  }
+}
