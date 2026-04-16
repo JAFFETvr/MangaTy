@@ -1,22 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { getPhotoStorageKey } from '@/app/settings';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
+import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
+import { ProfileViewModel } from '@/src/features/user/presentation/view-models/profile-view-model';
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getPhotoStorageKey } from '@/app/settings';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
-import { ProfileViewModel } from '@/src/features/user/presentation/view-models/profile-view-model';
-import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
-import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -58,6 +58,10 @@ export default function ProfileScreen() {
   // Recarga la foto cada vez que la pantalla entra en foco y cuando el usuario está disponible
   useFocusEffect(
     useCallback(() => {
+      void historyVM.loadHistory();
+      void favoritesVM.loadFavorites();
+      void viewModel.loadUser();
+
       AsyncStorage.getItem('@mock_created_webcomics').then((val) => {
         if (val) {
           const list = JSON.parse(val);
@@ -69,12 +73,17 @@ export default function ProfileScreen() {
 
       if (user?.email) {
         AsyncStorage.getItem(getPhotoStorageKey(user.email)).then((saved) => {
+          if (saved?.startsWith('blob:')) {
+            void AsyncStorage.removeItem(getPhotoStorageKey(user.email));
+            setPhotoUri(null);
+            return;
+          }
           setPhotoUri(saved || null);
         });
       } else {
         setPhotoUri(null);
       }
-    }, [user?.email])
+    }, [user?.email, historyVM, favoritesVM, viewModel])
   );
 
   // Muestra el nombre registrado; si aún no hay sesión guardada muestra un placeholder
@@ -381,4 +390,3 @@ const styles = StyleSheet.create({
     color: '#1A1A2E',
   },
 });
-

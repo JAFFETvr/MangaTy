@@ -1,20 +1,21 @@
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { CreateChapterViewModel } from '../view-models/create-chapter-view-model';
 
 interface Props {
@@ -37,6 +38,11 @@ export default function CreateChapterScreen({ mangaId }: Props) {
   // HOOK 2: Handle success
   useEffect(() => {
     if (state.success) {
+      if (Platform.OS === 'web') {
+        viewModel.reset();
+        router.back();
+        return;
+      }
       Alert.alert('✅ Éxito', 'Capítulo publicado correctamente', [
         { text: 'OK', onPress: () => {
           viewModel.reset();
@@ -49,6 +55,11 @@ export default function CreateChapterScreen({ mangaId }: Props) {
   // HOOK 3: Handle errors
   useEffect(() => {
     if (state.error) {
+      if (Platform.OS === 'web') {
+        console.error('❌ Error publicando capítulo:', state.error);
+        viewModel.resetError();
+        return;
+      }
       Alert.alert('❌ Error', state.error, [
         { text: 'OK', onPress: () => viewModel.resetError() }
       ]);

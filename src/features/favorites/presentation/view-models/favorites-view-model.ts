@@ -72,6 +72,10 @@ export class FavoritesViewModel {
     }
   }
 
+  isFavorite(mangaId: string): boolean {
+    return this.getState().favorites.some((m) => String(m.id) === String(mangaId));
+  }
+
   private updateState(partialState: Partial<FavoritesViewModelState>): void {
     const currentState = this.getState();
     this.stateSubject.setValue({

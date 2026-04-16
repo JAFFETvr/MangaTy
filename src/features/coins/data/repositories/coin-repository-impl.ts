@@ -13,7 +13,11 @@ export class CoinRepositoryImpl implements ICoinRepository {
   ) {}
 
   async getBalance(): Promise<number> {
-    return this.localDataSource.getBalance();
+    try {
+      return await this.remoteDataSource.getBalance();
+    } catch {
+      return this.localDataSource.getBalance();
+    }
   }
 
   async getPurchasePackages() {

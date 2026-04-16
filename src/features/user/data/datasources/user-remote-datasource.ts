@@ -16,6 +16,30 @@ interface WalletBalance {
 }
 
 export class UserRemoteDataSource {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const endpoints = ['/auth/change-password', '/users/change-password', '/user/change-password'];
+    const payloads = [
+      { currentPassword, newPassword },
+      { oldPassword: currentPassword, newPassword },
+    ];
+    let lastError: unknown = null;
+
+    for (const endpoint of endpoints) {
+      for (const payload of payloads) {
+        try {
+          await httpClient.post(endpoint, payload);
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('No se pudo cambiar la contraseña');
+  }
+
   async getUser(): Promise<User | null> {
     try {
       const auth = await TokenStorageService.getAuth();
@@ -23,9 +47,28 @@ export class UserRemoteDataSource {
         return null;
       }
 
-      // Obtener username y email guardados desde el registro
-      const username = await AsyncStorage.getItem(STORAGE_KEY_USERNAME);
+      // Obtener username y email guardados
+      let username = await AsyncStorage.getItem(STORAGE_KEY_USERNAME);
       const email = await AsyncStorage.getItem(STORAGE_KEY_EMAIL);
+      if (!username) {
+        const rawAuthUser = await AsyncStorage.getItem('auth_user');
+        if (rawAuthUser) {
+          try {
+            const parsed = JSON.parse(rawAuthUser);
+            if (parsed?.username && typeof parsed.username === 'string') {
+              username = parsed.username;
+            }
+          } catch (error) {
+            console.warn('⚠️ auth_user inválido en storage:', error);
+          }
+        }
+      }
+      if (!username && email) {
+        username = email.split('@')[0];
+      }
+      if (username) {
+        await AsyncStorage.setItem(STORAGE_KEY_USERNAME, username);
+      }
 
       // Fetch wallet balance to get user's TyCoins
       const balance = await httpClient.get<WalletBalance>('/wallet/balance');
@@ -51,6 +94,9 @@ export class UserRemoteDataSource {
   async updateUser(updates: Partial<User>): Promise<User> {
     // For now, just return the updated user
     // In a real scenario, you'd POST to an update endpoint
+    if (updates.name) {
+      await AsyncStorage.setItem(STORAGE_KEY_USERNAME, updates.name);
+    }
     const current = await this.getUser();
     return { ...current, ...updates } as User;
   }

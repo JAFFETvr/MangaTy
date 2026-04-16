@@ -1,16 +1,19 @@
 import { Colors } from '@/constants/theme';
 import { buildCoverUrl } from '@/src/core/api/api-config';
-import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { HomeScreenViewModel, HomeScreenState } from '../home-screen-view-model';
 import { MangaRemoteDataSource } from '@/src/features/manga/data/datasources/manga-remote-datasource';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { HomeScreenState, HomeScreenViewModel } from '../home-screen-view-model';
 
 const { width } = Dimensions.get('window');
 
 // Navegar con slug + mangaId tal como dicta la documentación de la API
-const navigateToDetail = (slug: string, mangaId: string) => {
-  router.push({ pathname: '/webcomic/[slug]', params: { slug, mangaId } });
+const navigateToDetail = (slug: string | undefined, mangaId: string) => {
+  router.push({
+    pathname: '/webcomic/[slug]',
+    params: { slug: slug || mangaId, mangaId },
+  });
 };
 
 // Géneros para mantener la estructura
@@ -152,8 +155,40 @@ function MyComicsSection({ comics }: { comics: any[] }) {
   );
 }
 
+function RecentComicsSection({ comics }: { comics: any[] }) {
+  if (comics.length === 0) return null;
+
+  return (
+    <View style={styles.myComicsContainer}>
+      <View style={styles.categoryHeader}>
+        <Text style={styles.categoryTitle}>Recientes</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowScroll}>
+        {comics.map((manga) => (
+          <TouchableOpacity
+            key={manga.id}
+            style={styles.mangaCard}
+            activeOpacity={0.8}
+            onPress={() => navigateToDetail(manga.slug, manga.id)}
+          >
+            <Image
+              source={{ uri: buildCoverUrl(manga.coverImagePath) }}
+              style={styles.mangaImage}
+            />
+            <View style={styles.mangaOverlay}>
+              <Text style={styles.mangaTitle} numberOfLines={2}>{manga.title}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 export function HomeScreen() {
+  const [viewModel] = useState(() => new HomeScreenViewModel(new MangaRemoteDataSource()));
   const [state, setState] = useState<HomeScreenState>({
+    allComics: [],
     featuredComics: [],
     myComics: [],
     categoryComics: {},
@@ -162,7 +197,6 @@ export function HomeScreen() {
   });
 
   useEffect(() => {
-    const viewModel = new HomeScreenViewModel(new MangaRemoteDataSource());
     const unsubscribe = viewModel.subscribe((newState) => {
       setState(newState);
     });
@@ -172,7 +206,13 @@ export function HomeScreen() {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [viewModel]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void viewModel.refresh();
+    }, [viewModel])
+  );
 
   return (
     <View style={styles.screen}>
@@ -195,6 +235,7 @@ export function HomeScreen() {
 
           <HeroCarousel comics={state.featuredComics} />
 
+          <RecentComicsSection comics={state.allComics.slice(0, 12)} />
           {state.myComics.length > 0 && <MyComicsSection comics={state.myComics} />}
 
           <View style={styles.categoriesWrapper}>

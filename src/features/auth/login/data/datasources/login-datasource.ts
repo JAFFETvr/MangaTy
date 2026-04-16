@@ -1,11 +1,11 @@
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoginRequest, LoginResponse, User } from '../../domain/entities/user';
 import {
     ILoginLocalDatasource,
     ILoginRemoteDatasource,
 } from '../datasources/login-datasource.interface';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { httpClient } from '@/src/core/http/http-client';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 export class LoginLocalDatasource implements ILoginLocalDatasource {
   private tokenKey = 'auth_token';
@@ -76,10 +76,14 @@ interface AuthResponse {
 export class LoginRemoteDatasource implements ILoginRemoteDatasource {
   async login(request: LoginRequest): Promise<LoginResponse> {
     try {
-      const response = await httpClient.post<AuthResponse>('/auth/login', {
-        email: request.email,
-        password: request.password,
-      });
+      const response = await httpClient.post<AuthResponse>(
+        '/auth/login',
+        {
+          email: request.email,
+          password: request.password,
+        },
+        { skipAuth: true }
+      );
 
       // Save auth data persistently
       await TokenStorageService.saveAuth(response.token, response.userId, response.role);

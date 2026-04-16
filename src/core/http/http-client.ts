@@ -3,7 +3,6 @@
  * Handles all API requests with JWT authentication
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../api/api-config';
 
 export interface HttpResponse<T> {
@@ -56,9 +55,13 @@ export class HttpClient {
   /**
    * POST request
    */
-  async post<T>(endpoint: string, body: any): Promise<T> {
+  async post<T>(
+    endpoint: string,
+    body: any,
+    options?: { skipAuth?: boolean }
+  ): Promise<T> {
     const url = `${API_BASE}${endpoint}`;
-    const headers = this.getHeaders();
+    const headers = this.getHeaders(!(options?.skipAuth ?? false));
 
     try {
       const response = await fetch(url, {
@@ -164,12 +167,12 @@ export class HttpClient {
   /**
    * Get headers with optional JWT token
    */
-  private getHeaders(): Record<string, string> {
+  private getHeaders(includeAuth: boolean = true): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (this.token) {
+    if (includeAuth && this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 

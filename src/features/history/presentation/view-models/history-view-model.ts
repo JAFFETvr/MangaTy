@@ -61,6 +61,17 @@ export class HistoryViewModel {
     }
   }
 
+  async addEntry(mangaId: string, chapterNumber: number = 1, progress: number = 0): Promise<void> {
+    try {
+      await this.addToHistory.execute(mangaId, chapterNumber, progress);
+      await this.loadHistory();
+    } catch (error) {
+      this.updateState({
+        error: 'Error al guardar historial',
+      });
+    }
+  }
+
   private updateState(partialState: Partial<HistoryViewModelState>): void {
     const currentState = this.getState();
     this.stateSubject.setValue({

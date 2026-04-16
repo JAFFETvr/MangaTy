@@ -9,26 +9,30 @@
  * CERO datos hardcodeados en esta pantalla.
  */
 
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { incrementPublicWebcomicViews } from '@/src/core/storage/local-webcomic-storage';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
+import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
-import { MangaDetailViewModel } from '../view-models/manga-detail-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chapter } from '../../domain/entities/chapter';
 import { PurchaseModal } from '../components/purchase-modal';
 import { ChapterPurchaseViewModel } from '../view-models/chapter-purchase-view-model';
+import { MangaDetailViewModel } from '../view-models/manga-detail-view-model';
 
 interface WebcomicDetailScreenProps {
   slug: string;
@@ -49,9 +53,18 @@ export default function WebcomicDetailScreen({
   const [purchaseViewModel] = useState<ChapterPurchaseViewModel>(() =>
     serviceLocator.get<ChapterPurchaseViewModel>(DIKeys.CHAPTER_PURCHASE_VIEW_MODEL)
   );
+  const [favoritesViewModel] = useState<FavoritesViewModel>(() =>
+    serviceLocator.get<FavoritesViewModel>(DIKeys.FAVORITES_VIEW_MODEL)
+  );
+  const [historyViewModel] = useState<HistoryViewModel>(() =>
+    serviceLocator.get<HistoryViewModel>(DIKeys.HISTORY_VIEW_MODEL)
+  );
   const [state, setState] = useState(viewModel.getState());
   const [purchaseState, setPurchaseState] = useState(purchaseViewModel.getState());
   const [modalVisible, setModalVisible] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const recordedHistoryRef = useRef<string | null>(null);
+  const recordedViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
@@ -84,6 +97,36 @@ export default function WebcomicDetailScreen({
       purchaseViewModel.reset();
     }
   }, [purchaseState.success, purchaseState.insufficientCoins]);
+
+  useEffect(() => {
+    const syncFavoriteAndHistory = async () => {
+      if (!state.manga) return;
+
+      await favoritesViewModel.loadFavorites();
+      setIsFavorite(favoritesViewModel.isFavorite(state.manga.id));
+
+      if (recordedHistoryRef.current !== state.manga.id) {
+        await historyViewModel.addEntry(state.manga.id, 1, 0);
+        recordedHistoryRef.current = state.manga.id;
+      }
+    };
+
+    void syncFavoriteAndHistory();
+  }, [state.manga?.id]);
+
+  useEffect(() => {
+    const registerLocalView = async () => {
+      if (!state.manga) return;
+      if (!state.manga.slug?.startsWith('local-')) return;
+      if (recordedViewRef.current === state.manga.id) return;
+
+      recordedViewRef.current = state.manga.id;
+      await incrementPublicWebcomicViews(state.manga.id);
+      await viewModel.loadDetail(slug, mangaId);
+    };
+
+    void registerLocalView();
+  }, [state.manga?.id, state.manga?.slug, mangaId, slug, viewModel]);
 
   const handleConfirmPurchaseNavigation = () => {
      if (purchaseState.chapter) {
@@ -133,6 +176,7 @@ export default function WebcomicDetailScreen({
 
   const handleStartReading = () => {
     if (!firstAvailableChapter) return;
+    void historyViewModel.addEntry(manga.id, firstAvailableChapter.chapterNumber, 0);
     router.push({
       pathname: '/reader/[mangaId]/[chapterId]',
       params: {
@@ -148,6 +192,7 @@ export default function WebcomicDetailScreen({
     const isFree = !ch.premium;
 
     if (isFree || unlocked) {
+      void historyViewModel.addEntry(manga.id, ch.chapterNumber, 0);
       router.push({
         pathname: '/reader/[mangaId]/[chapterId]',
         params: {
@@ -160,6 +205,20 @@ export default function WebcomicDetailScreen({
       // Mostrar modal de compra
       purchaseViewModel.setChapter(ch);
       setModalVisible(true);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    await favoritesViewModel.toggleFavorite(manga);
+    setIsFavorite(favoritesViewModel.isFavorite(manga.id));
+  };
+
+  const handleShare = async () => {
+    try {
+      const message = `${manga.title}\n\n${manga.synopsis || 'Descubre este webcomic en Mangaty.'}`;
+      await Share.share({ message, title: manga.title });
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo compartir el comic');
     }
   };
 
@@ -195,11 +254,11 @@ export default function WebcomicDetailScreen({
           <Feather name="arrow-left" size={20} color="#555" />
         </TouchableOpacity>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
             <Feather name="share-2" size={20} color="#555" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconButton, { marginLeft: 12 }]}>
-            <Feather name="heart" size={20} color="#555" />
+          <TouchableOpacity style={[styles.iconButton, { marginLeft: 12 }]} onPress={handleToggleFavorite}>
+            <Feather name="heart" size={20} color={isFavorite ? '#D8708E' : '#555'} />
           </TouchableOpacity>
         </View>
       </View>

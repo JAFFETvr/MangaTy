@@ -1,8 +1,11 @@
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { persistImageUri } from '@/src/core/utils/persist-image-uri';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 import { ProfileViewModel } from '@/src/features/user/presentation/view-models/profile-view-model';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -10,6 +13,7 @@ import {
     Alert,
     Image,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -71,6 +75,11 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (user?.email) {
       AsyncStorage.getItem(getPhotoStorageKey(user.email)).then((saved) => {
+        if (saved?.startsWith('blob:')) {
+          void AsyncStorage.removeItem(getPhotoStorageKey(user.email));
+          setPhotoUri(null);
+          return;
+        }
         setPhotoUri(saved || null);
       });
     }
@@ -78,30 +87,11 @@ export default function SettingsScreen() {
 
   const savePhoto = async (uri: string) => {
     try {
-      // Si es un file:// URI, convertir a base64 y luego a blob URL
-      let finalUri = uri;
-      if (uri.startsWith('file://')) {
-        try {
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          // Crear blob URL (más eficiente para display)
-          const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
-          finalUri = URL.createObjectURL(blob);
-          console.log('✅ Foto guardada como blob URL');
-        } catch (error) {
-          console.error('Error convirtiendo foto:', error);
-          // Fallback: usar data URI
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          finalUri = `data:image/jpeg;base64,${base64}`;
-        }
-      }
+      const finalUri = await persistImageUri(uri);
       setPhotoUri(finalUri);
       if (user?.email) {
         // Guardar la URL/data URI para persistencia
-        await AsyncStorage.setItem(getPhotoStorageKey(user.email), finalUri);
+        await AsyncStorage.setItem(getPhotoStorageKey(user.email), finalUri || '');
       }
     } catch (error) {
       console.error('Error saving photo:', error);
@@ -109,7 +99,36 @@ export default function SettingsScreen() {
     }
   };
 
+  const executeLogout = async () => {
+    try {
+      await viewModel.performLogout();
+      await TokenStorageService.clearAuth();
+      await AsyncStorage.multiRemove([
+        'auth_token',
+        'auth_user',
+        STORAGE_KEY_EMAIL,
+        STORAGE_KEY_USERNAME,
+      ]);
+      if (Platform.OS === 'web') {
+        globalThis.location?.replace(`${globalThis.location.origin}/login`);
+      } else {
+        router.replace('/login');
+      }
+    } catch (error) {
+      console.error('❌ Error en logout:', error);
+      Alert.alert('Error', 'No se pudo cerrar sesión correctamente');
+    }
+  };
+
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = globalThis.confirm?.('¿Estás seguro que deseas cerrar sesión?') ?? true;
+      if (confirmed) {
+        void executeLogout();
+      }
+      return;
+    }
+
     Alert.alert(
       'Cerrar sesión',
       '¿Estás seguro que deseas cerrar sesión?',
@@ -118,53 +137,59 @@ export default function SettingsScreen() {
         {
           text: 'Cerrar sesión',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🚪 Iniciando logout...');
-              await viewModel.performLogout();
-              console.log('🚪 Logout completado, redirigiendo...');
-
-              // Limpiar AsyncStorage de datos sensibles
-              await AsyncStorage.removeItem('auth_token');
-              await AsyncStorage.removeItem('auth_user');
-
-              // Redirigir a login
-              router.replace('/(auth)/login');
-            } catch (error) {
-              console.error('❌ Error en logout:', error);
-              Alert.alert('Error', 'No se pudo cerrar sesión correctamente');
-            }
+          onPress: () => {
+            void executeLogout();
           },
         },
       ]
     );
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    const notifyError = (message: string) => {
+      if (Platform.OS === 'web') {
+        showToast(message, 'error');
+      } else {
+        Alert.alert('Error', message);
+      }
+    };
+
     if (!currentPassword.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu contraseña actual');
+      notifyError('Por favor ingresa tu contraseña actual');
       return;
     }
     if (newPassword.length < 8) {
-      Alert.alert('Error', 'La nueva contraseña debe tener al menos 8 caracteres');
+      notifyError('La nueva contraseña debe tener al menos 8 caracteres');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      notifyError('Las contraseñas no coinciden');
       return;
     }
 
-    // TODO: Implementar cambio de contraseña en el backend cuando esté disponible
-    Alert.alert(
-      'Éxito',
-      'Tu contraseña ha sido cambiada correctamente',
-      [{ text: 'OK', onPress: () => {
+    try {
+      await viewModel.changePassword(currentPassword.trim(), newPassword.trim());
+
+      const resetForm = () => {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
         setShowPasswordModal(false);
-      }}]
-    );
+      };
+
+      if (Platform.OS === 'web') {
+        resetForm();
+        showToast('Tu contraseña ha sido cambiada correctamente', 'success');
+      } else {
+        Alert.alert(
+          'Éxito',
+          'Tu contraseña ha sido cambiada correctamente',
+          [{ text: 'OK', onPress: resetForm }]
+        );
+      }
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña');
+    }
   };
 
   const handleSaveUsername = async () => {
@@ -461,8 +486,14 @@ export default function SettingsScreen() {
               <TouchableOpacity style={styles.passwordCancelBtn} onPress={() => setShowPasswordModal(false)}>
                 <Text style={styles.passwordCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.passwordConfirmBtn} onPress={handleChangePassword}>
-                <Text style={styles.passwordConfirmText}>Cambiar contraseña</Text>
+              <TouchableOpacity
+                style={[styles.passwordConfirmBtn, state.isSaving && { opacity: 0.7 }]}
+                onPress={handleChangePassword}
+                disabled={state.isSaving}
+              >
+                <Text style={styles.passwordConfirmText}>
+                  {state.isSaving ? 'Cambiando...' : 'Cambiar contraseña'}
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>

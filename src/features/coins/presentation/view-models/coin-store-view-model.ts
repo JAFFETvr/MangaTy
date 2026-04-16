@@ -2,9 +2,10 @@
  * CoinStoreViewModel
  */
 
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { StateFlow } from '@/src/shared/hooks';
 import { CoinPackage } from '../../domain/entities';
-import { GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd, CreateCheckout } from '../../domain/use-cases';
+import { CreateCheckout, GetCoinBalance, GetCoinPackages, PurchaseCoins, WatchAd } from '../../domain/use-cases';
 
 export interface CoinStoreViewModelState {
   balance: number;
@@ -72,14 +73,30 @@ export class CoinStoreViewModel {
 
   async checkout(packageId: string): Promise<string | null> {
     try {
-      // crypto nativo de hermes para generar uuid local y descentralizado
-      const idempotencyKey = crypto.randomUUID();
+      const role = await TokenStorageService.getRole();
+      if (role === 'ROLE_CREATOR') {
+        this.updateState({
+          error: 'Tu cuenta es ROLE_CREATOR. El backend permite checkout solo para ROLE_USER.',
+        });
+        return null;
+      }
+
+      const idempotencyKey = this.generateIdempotencyKey();
       const checkoutUrl = await this.createCheckout.execute(packageId, idempotencyKey);
       return checkoutUrl;
     } catch (error) {
-      this.updateState({ error: 'Fallo al procesar el checkout con Stripe' });
+      const message = error instanceof Error ? error.message : 'Fallo al procesar el checkout con Stripe';
+      this.updateState({ error: message });
       return null;
     }
+  }
+
+  private generateIdempotencyKey(): string {
+    const globalCrypto = globalThis.crypto as { randomUUID?: () => string } | undefined;
+    if (globalCrypto?.randomUUID) {
+      return globalCrypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
   }
 
   private updateState(partialState: Partial<CoinStoreViewModelState>): void {

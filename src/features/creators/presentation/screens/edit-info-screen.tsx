@@ -1,12 +1,14 @@
 import { buildCoverUrl } from '@/src/core/api/api-config';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Image,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -14,7 +16,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AVAILABLE_GENRES, EditWebcomicViewModel } from '../view-models/edit-webcomic-view-model';
 
@@ -41,6 +42,11 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
 
   useEffect(() => {
     if (state.success) {
+      if (Platform.OS === 'web') {
+        viewModel.resetStatus();
+        router.back();
+        return;
+      }
       Alert.alert('Éxito', 'Cambios guardados correctamente', [
         { text: 'OK', onPress: () => {
           viewModel.resetStatus();
@@ -49,6 +55,11 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
       ]);
     }
     if (state.error) {
+      if (Platform.OS === 'web') {
+        console.error('❌ Error editando comic:', state.error);
+        viewModel.resetStatus();
+        return;
+      }
       Alert.alert('Error', state.error);
       viewModel.resetStatus();
     }

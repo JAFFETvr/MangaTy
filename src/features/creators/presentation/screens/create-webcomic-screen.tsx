@@ -1,6 +1,12 @@
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import {
+    getUsernameByUserIdStorageKey,
+    getUserWebcomicsStorageKey,
+    upsertPublicWebcomic,
+} from '@/src/core/storage/local-webcomic-storage';
+import { persistImageUri } from '@/src/core/utils/persist-image-uri';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -16,7 +22,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 
 const GENRES = [
   'Drama', 'Romance', 'GL', 'BL', 'Acción', 'Comedia',
@@ -351,17 +357,11 @@ export default function CreateWebcomicScreen() {
             activeOpacity={0.8}
             onPress={async () => {
               try {
-                // Persistir imagen
                 let persistedCover = coverImage;
-                if (persistedCover && persistedCover.startsWith('file://')) {
-                  try {
-                    const base64 = await FileSystem.readAsStringAsync(persistedCover, {
-                      encoding: 'base64',
-                    });
-                    persistedCover = `data:image/jpeg;base64,${base64}`;
-                  } catch (e) {
-                    console.error('Error persisting cover:', e);
-                  }
+                try {
+                  persistedCover = await persistImageUri(coverImage);
+                } catch (e) {
+                  console.error('Error persisting cover:', e);
                 }
 
                 // Obtener userId actual
@@ -370,22 +370,30 @@ export default function CreateWebcomicScreen() {
                   console.error('❌ No user ID found - cannot save webcomic');
                   return;
                 }
+                const creatorName =
+                  (await AsyncStorage.getItem(getUsernameByUserIdStorageKey(userId))) ||
+                  (await AsyncStorage.getItem(STORAGE_KEY_USERNAME));
 
                 const newWebcomic = {
                   id: Date.now().toString(),
                   title,
                   description,
                   genres: selectedGenres,
+                  createdAt: new Date().toISOString(),
+                  viewsCount: 0,
                   coverImage: persistedCover,
                   chapters: [],
+                  creatorId: userId,
+                  creatorName: creatorName || 'Creador',
                 };
                 
                 // Usar userId en la clave de almacenamiento
-                const storageKey = `@mangaty_${userId}_webcomics`;
+                const storageKey = getUserWebcomicsStorageKey(userId);
                 const storedStr = await AsyncStorage.getItem(storageKey);
                 const stored = storedStr ? JSON.parse(storedStr) : [];
                 stored.push(newWebcomic);
                 await AsyncStorage.setItem(storageKey, JSON.stringify(stored));
+                await upsertPublicWebcomic(userId, newWebcomic);
                 
                 router.replace('/my-webcomics');
               } catch (error) {

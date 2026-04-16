@@ -4,11 +4,13 @@
  */
 
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { loadPublicWebcomics } from '@/src/core/storage/local-webcomic-storage';
 import { MangaRemoteDataSource } from '@/src/features/manga/data/datasources/manga-remote-datasource';
 import { Manga } from '@/src/features/manga/domain/entities/manga';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface HomeScreenState {
+  allComics: Manga[];
   featuredComics: Manga[];
   myComics: Manga[];
   categoryComics: { [key: string]: Manga[] };
@@ -19,6 +21,7 @@ export interface HomeScreenState {
 export class HomeScreenViewModel {
   private dataSource: MangaRemoteDataSource;
   private state: HomeScreenState = {
+    allComics: [],
     featuredComics: [],
     myComics: [],
     categoryComics: {},
@@ -64,11 +67,19 @@ export class HomeScreenViewModel {
     try {
       this.setState({ loading: true, error: null });
 
-      // Cargar comics publicados
-      const allComics = await this.dataSource.getPublishedComics(0, 50);
+      // Cargar catálogo público de comics
+      let allComics: Manga[] = [];
+      try {
+        allComics = await this.dataSource.getPublishedComics(0, 50);
+      } catch {
+        allComics = await this.dataSource.getAllMangas();
+      }
+
+      const publicLocalComics = this.mapLocalWebcomics(await loadPublicWebcomics());
+      const combinedCatalog = this.sortByNewest(this.mergeCatalogs(publicLocalComics, allComics));
 
       // Los primeros 4 como featured
-      const featured = allComics.slice(0, 4);
+      const featured = combinedCatalog.slice(0, 4);
 
       // Cargar mis comics si está autenticado
       let myComics: Manga[] = [];
@@ -78,9 +89,10 @@ export class HomeScreenViewModel {
       }
 
       // Preparar comics por categoría (usando datos disponibles)
-      const categoryComics = this.organizeComicsByGenre(allComics);
+      const categoryComics = this.organizeComicsByGenre(combinedCatalog);
 
       this.setState({
+        allComics: combinedCatalog,
         featuredComics: featured,
         myComics,
         categoryComics,
@@ -111,14 +123,14 @@ export class HomeScreenViewModel {
         return webcomics.map((w: any) => ({
           id: w.id,
           title: w.title,
-          slug: `manga-${w.id}`,
+          slug: `local-${w.id}`,
           synopsis: w.description || '',
-          genre: w.genres ? w.genres.join(', ') : '',
+          genre: Array.isArray(w.genres) ? w.genres.join(', ') : (w.genres || ''),
           mature: false,
-          viewsCount: 0,
+          viewsCount: w.viewsCount ?? 0,
           coverImagePath: w.coverImage || '',
           creatorName: 'Tu Webcomic',
-          createdAt: new Date().toISOString(),
+          createdAt: w.createdAt || new Date().toISOString(),
           chaptersData: [],
         }));
       }
@@ -128,38 +140,62 @@ export class HomeScreenViewModel {
     return [];
   }
 
+  private mapLocalWebcomics(webcomics: any[]): Manga[] {
+    return webcomics.map((w: any) => ({
+      id: w.id,
+      title: w.title,
+      slug: `local-${w.id}`,
+      synopsis: w.description || '',
+      genre: Array.isArray(w.genres) ? w.genres.join(', ') : (w.genres || ''),
+      mature: false,
+      viewsCount: w.viewsCount ?? 0,
+      coverImagePath: w.coverImage || '',
+      creatorName: w.creatorName || 'Creador',
+      createdAt: w.createdAt || new Date().toISOString(),
+      chaptersData: [],
+    }));
+  }
+
+  private mergeCatalogs(localComics: Manga[], apiComics: Manga[]): Manga[] {
+    const merged = new Map<string, Manga>();
+    for (const comic of localComics) {
+      merged.set(comic.id, comic);
+    }
+    for (const comic of apiComics) {
+      if (!merged.has(comic.id)) {
+        merged.set(comic.id, comic);
+      }
+    }
+    return Array.from(merged.values());
+  }
+
+  private sortByNewest(comics: Manga[]): Manga[] {
+    return [...comics].sort((a, b) => {
+      const aRaw = new Date(a.createdAt || '').getTime();
+      const bRaw = new Date(b.createdAt || '').getTime();
+      const aTime = Number.isFinite(aRaw) ? aRaw : 0;
+      const bTime = Number.isFinite(bRaw) ? bRaw : 0;
+      return bTime - aTime;
+    });
+  }
+
   /**
    * Fallback: cargar webcomics locales si falla la API
    */
   private async loadLocalWebcomics(): Promise<void> {
     try {
       const userId = await TokenStorageService.getUserId();
-      if (!userId) return;
+      const publicLocalComics = this.mapLocalWebcomics(await loadPublicWebcomics());
+      const myComics = userId ? await this.loadMyComics(userId) : [];
 
-      const storageKey = `@mangaty_${userId}_webcomics`;
-      const storedStr = await AsyncStorage.getItem(storageKey);
-      if (storedStr) {
-        const webcomics = JSON.parse(storedStr);
-        const myComics = webcomics.map((w: any) => ({
-          id: w.id,
-          title: w.title,
-          slug: `manga-${w.id}`,
-          synopsis: w.description || '',
-          genre: w.genres ? w.genres.join(', ') : '',
-          mature: false,
-          viewsCount: 0,
-          coverImagePath: w.coverImage || '',
-          creatorName: 'Tu Webcomic',
-          createdAt: new Date().toISOString(),
-          chaptersData: [],
-        }));
-
-        this.setState({
-          myComics,
-          loading: false,
-          error: 'Mostrando webcomics locales',
-        });
-      }
+      this.setState({
+        allComics: publicLocalComics,
+        featuredComics: publicLocalComics.slice(0, 4),
+        myComics,
+        categoryComics: this.organizeComicsByGenre(publicLocalComics),
+        loading: false,
+        error: 'Mostrando webcomics locales',
+      });
     } catch (error) {
       console.error('❌ Error loading fallback data:', error);
     }

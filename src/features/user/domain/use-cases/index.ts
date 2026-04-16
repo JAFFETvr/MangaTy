@@ -21,6 +21,14 @@ export class UpdateUser {
   }
 }
 
+export class ChangePassword {
+  constructor(private repository: IUserRepository) {}
+
+  async execute(currentPassword: string, newPassword: string): Promise<void> {
+    return this.repository.changePassword(currentPassword, newPassword);
+  }
+}
+
 export class Logout {
   constructor(private repository: IUserRepository) {}
 
@@ -30,6 +38,7 @@ export class Logout {
 }
 
 // Export new use cases
+export * from './GetUserCoinBalance';
 export * from './SpendCoins';
 export * from './ValidateUserBalance';
-export * from './GetUserCoinBalance';
+

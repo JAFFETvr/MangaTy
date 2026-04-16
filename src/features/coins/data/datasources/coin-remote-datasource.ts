@@ -1,5 +1,5 @@
-import { CoinPackage } from '../../domain/entities';
 import { httpClient } from '@/src/core/http/http-client';
+import { CoinPackage } from '../../domain/entities';
 
 interface CoinPackageResponse {
   id: string;
@@ -37,10 +37,16 @@ export class CoinRemoteDataSource {
 
   async checkout(packageId: string, idempotencyKey: string): Promise<string> {
     try {
-      const response = await httpClient.post<CheckoutResponse>('/payments/checkout', {
-        packageId,
-        idempotencyKey,
-      });
+      const response = await httpClient.postWithHeaders<CheckoutResponse>(
+        '/payments/checkout',
+        {
+          packageId,
+          idempotencyKey,
+        },
+        {
+          'X-Idempotency-Key': idempotencyKey,
+        }
+      );
 
       if (!response.checkoutUrl) {
         throw new Error('No checkout URL in response');
@@ -66,4 +72,3 @@ export class CoinRemoteDataSource {
     }
   }
 }
-

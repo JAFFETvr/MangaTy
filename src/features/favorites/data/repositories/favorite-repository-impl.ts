@@ -13,15 +13,15 @@ export class FavoriteRepositoryImpl implements IFavoriteRepository {
     return this.dataSource.getFavorites();
   }
 
-  async addFavorite(mangaId: number): Promise<void> {
+  async addFavorite(mangaId: string): Promise<void> {
     return this.dataSource.addFavorite(mangaId);
   }
 
-  async removeFavorite(mangaId: number): Promise<void> {
+  async removeFavorite(mangaId: string): Promise<void> {
     return this.dataSource.removeFavorite(mangaId);
   }
 
-  async isFavorite(mangaId: number): Promise<boolean> {
+  async isFavorite(mangaId: string): Promise<boolean> {
     return this.dataSource.isFavorite(mangaId);
   }
 }

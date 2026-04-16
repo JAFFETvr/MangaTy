@@ -2,10 +2,10 @@
  * User Local DataSource
  */
 
+import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../../domain/entities';
-import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
-import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
 
 export class UserLocalDataSource {
   private user: User = {
@@ -41,6 +41,15 @@ export class UserLocalDataSource {
     return { ...this.user };
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (!currentPassword || !newPassword) {
+      throw new Error('Debes completar ambos campos de contraseña');
+    }
+    if (currentPassword === newPassword) {
+      throw new Error('La nueva contraseña debe ser diferente a la actual');
+    }
+  }
+
   async getUserCoinBalance(): Promise<number> {
     return this.user.coinBalance;
   }
@@ -59,8 +68,6 @@ export class UserLocalDataSource {
   }
 
   async logout(): Promise<void> {
-    // Limpiar el username al cerrar sesión
-    await AsyncStorage.removeItem(STORAGE_KEY_USERNAME);
+    await AsyncStorage.multiRemove([STORAGE_KEY_USERNAME, STORAGE_KEY_EMAIL]);
   }
 }
-

@@ -4,10 +4,19 @@
 
 import { User } from '../../domain/entities';
 import { IUserRepository } from '../../domain/repositories/user-repository';
-import { UserLocalDataSource } from '../datasources/user-local-datasource';
 
 export class UserRepositoryImpl implements IUserRepository {
-  constructor(private dataSource: UserLocalDataSource) {}
+  constructor(
+    private dataSource: {
+      getUser(): Promise<User | null>;
+      updateUser(updates: Partial<User>): Promise<User>;
+      changePassword(currentPassword: string, newPassword: string): Promise<void>;
+      getUserCoinBalance(): Promise<number>;
+      addCoins(amount: number): Promise<number>;
+      spendCoins(amount: number): Promise<number>;
+      logout(): Promise<void>;
+    }
+  ) {}
 
   async getUser(): Promise<User | null> {
     return this.dataSource.getUser();
@@ -15,6 +24,10 @@ export class UserRepositoryImpl implements IUserRepository {
 
   async updateUser(updates: Partial<User>): Promise<User> {
     return this.dataSource.updateUser(updates);
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.dataSource.changePassword(currentPassword, newPassword);
   }
 
   async getUserCoinBalance(): Promise<number> {

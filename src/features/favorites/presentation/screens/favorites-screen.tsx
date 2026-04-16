@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { Manga } from '@/src/features/manga/domain/entities';
+import { Feather, FontAwesome } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  Dimensions,
-  ActivityIndicator,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, FontAwesome } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { FavoritesViewModel } from '../view-models/favorites-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
-import { Manga } from '@/src/features/manga/domain/entities';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
@@ -35,6 +35,12 @@ export default function FavoritesScreen() {
     viewModel.loadFavorites();
     return unsubscribe;
   }, [viewModel]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void viewModel.loadFavorites();
+    }, [viewModel])
+  );
 
   const favorites = [...state.favorites].sort((a, b) => {
     if (sortBy === 'recent') {

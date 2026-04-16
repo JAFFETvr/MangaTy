@@ -1,7 +1,11 @@
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import {
+  getUserWebcomicsStorageKey,
+  upsertPublicWebcomic,
+} from '@/src/core/storage/local-webcomic-storage';
+import { persistImageUri } from '@/src/core/utils/persist-image-uri';
 import { StateFlow } from '@/src/shared/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 export interface CreateChapterState {
   title: string;
@@ -63,10 +67,10 @@ export class CreateChapterViewModel {
       const persistedImages: string[] = [];
       for (const imageUri of images) {
         try {
-          const base64 = await FileSystem.readAsStringAsync(imageUri, {
-            encoding: 'base64',
-          });
-          persistedImages.push(`data:image/jpeg;base64,${base64}`);
+          const persistedImage = await persistImageUri(imageUri);
+          if (persistedImage) {
+            persistedImages.push(persistedImage);
+          }
         } catch (error) {
           console.error('Error converting image:', error);
           // Si falla la conversión, usar el URI original
@@ -75,7 +79,7 @@ export class CreateChapterViewModel {
       }
 
       // Obtener webcomics del cache local con clave del usuario
-      const storageKey = `@mangaty_${userId}_webcomics`;
+      const storageKey = getUserWebcomicsStorageKey(userId);
       const storedStr = await AsyncStorage.getItem(storageKey);
       if (!storedStr) {
         throw new Error('Comic no encontrado - almacenamiento vacío');
@@ -112,6 +116,7 @@ export class CreateChapterViewModel {
 
       // Guardar cambios con la clave del usuario
       await AsyncStorage.setItem(storageKey, JSON.stringify(webcomics));
+      await upsertPublicWebcomic(userId, webcomics[comicIndex]);
       console.log('💾 Capítulo guardado en AsyncStorage');
 
       this.updateState({ isLoading: false, success: true });

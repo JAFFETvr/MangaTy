@@ -4,7 +4,7 @@ import { TYPOGRAPHY } from '@/src/core/theme/typography';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RegisterViewModel } from '../view-models/register-view-model';
 
 interface RegisterScreenProps {
@@ -21,6 +21,7 @@ export function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'ROLE_USER' | 'ROLE_CREATOR'>('ROLE_USER');
   const [formError, setFormError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   
@@ -97,7 +98,7 @@ export function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
 
     setFormError(null);
     setValidationErrors({});
-    await viewModel.register(username, email, password);
+    await viewModel.register(username, email, password, role);
   };
 
   return (
@@ -155,6 +156,30 @@ export function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
         <Text style={styles.fieldError}>{validationErrors.password}</Text>
       )}
 
+      <View style={styles.roleContainer}>
+        <Text style={styles.roleLabel}>Tipo de cuenta</Text>
+        <View style={styles.roleButtonsRow}>
+          <TouchableOpacity
+            style={[styles.roleButton, role === 'ROLE_USER' && styles.roleButtonActive]}
+            onPress={() => setRole('ROLE_USER')}
+            disabled={state.isLoading}
+          >
+            <Text style={[styles.roleButtonText, role === 'ROLE_USER' && styles.roleButtonTextActive]}>
+              Lector
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.roleButton, role === 'ROLE_CREATOR' && styles.roleButtonActive]}
+            onPress={() => setRole('ROLE_CREATOR')}
+            disabled={state.isLoading}
+          >
+            <Text style={[styles.roleButtonText, role === 'ROLE_CREATOR' && styles.roleButtonTextActive]}>
+              Creador
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Inline Error Message */}
       {formError && (
         <Text style={styles.inlineError}>{formError}</Text>
@@ -180,6 +205,41 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  roleContainer: {
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  roleLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: '#1A1A2E',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  roleButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  roleButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  roleButtonActive: {
+    borderColor: '#D8708E',
+    backgroundColor: '#FDF1F5',
+  },
+  roleButtonText: {
+    color: '#666',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+  },
+  roleButtonTextActive: {
+    color: '#D8708E',
   },
   inlineError: {
     color: '#c33',

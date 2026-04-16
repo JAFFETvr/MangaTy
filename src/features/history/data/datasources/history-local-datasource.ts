@@ -1,91 +1,130 @@
-/**
- * History Local DataSource
- */
-
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { loadPublicWebcomics } from '@/src/core/storage/local-webcomic-storage';
 import { MangaRemoteDataSource } from '@/src/features/manga/data/datasources/manga-remote-datasource';
 import { Manga } from '@/src/features/manga/domain/entities';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReadingHistory } from '../../domain/entities';
 
+type PersistedReadingHistory = Omit<ReadingHistory, 'timestamp'> & { timestamp: string };
+
 export class HistoryLocalDataSource {
-  private history: ReadingHistory[] = [];
   private mangaDataSource: MangaRemoteDataSource;
 
   constructor() {
     this.mangaDataSource = new MangaRemoteDataSource();
-    this.initializeMockData();
   }
 
-  private initializeMockData(): void {
-    // Mock data for demo - Using slugs and IDs that match potential API responses or allow navigation
-    this.history = [
-      {
-        mangaId: 'sakura-uuid',
-        chapterNumber: 3,
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        progress: 75,
-      },
-      {
-        mangaId: 'demon-uuid',
-        chapterNumber: 1,
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-        progress: 100,
-      },
-    ];
+  private async getStorageKey(): Promise<string> {
+    const userId = await TokenStorageService.getUserId();
+    return `@mangaty_${userId || 'guest'}_history`;
+  }
+
+  private async getStoredHistory(): Promise<ReadingHistory[]> {
+    const key = await this.getStorageKey();
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw) as PersistedReadingHistory[];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((entry) => ({
+      ...entry,
+      mangaId: String(entry.mangaId),
+      timestamp: new Date(entry.timestamp),
+    }));
+  }
+
+  private async saveHistory(history: ReadingHistory[]): Promise<void> {
+    const key = await this.getStorageKey();
+    const serialized: PersistedReadingHistory[] = history.map((entry) => ({
+      ...entry,
+      timestamp: entry.timestamp.toISOString(),
+    }));
+    await AsyncStorage.setItem(key, JSON.stringify(serialized));
+  }
+
+  private async getCatalogById(): Promise<Map<string, Manga>> {
+    let apiComics: Manga[] = [];
+    try {
+      apiComics = await this.mangaDataSource.getAllMangas();
+    } catch {
+      apiComics = [];
+    }
+
+    const localComics = (await loadPublicWebcomics()).map((comic: any): Manga => ({
+      id: String(comic.id),
+      title: comic.title || 'Webcomic',
+      slug: `local-${comic.id}`,
+      synopsis: comic.description || '',
+      genre: Array.isArray(comic.genres) ? comic.genres.join(', ') : (comic.genres || ''),
+      mature: false,
+      viewsCount: comic.viewsCount ?? 0,
+      coverImagePath: comic.coverImage || '',
+      creatorName: comic.creatorName || 'Creador',
+      createdAt: new Date().toISOString(),
+      chaptersData: [],
+    }));
+
+    const byId = new Map<string, Manga>();
+    [...localComics, ...apiComics].forEach((manga) => byId.set(String(manga.id), manga));
+    return byId;
   }
 
   async getHistory(): Promise<(ReadingHistory & { manga: Manga })[]> {
-    // Para el historial, necesitamos los objetos Manga reales para poder navegar por slug e ID
-    // En una app real, esto podría requerir un endpoint de "get multiple mangas by ids"
-    // Por ahora, usamos el listado general del home si está disponible
-    const allMangas = await this.mangaDataSource.getAllMangas().catch(() => []);
-    
-    // Si no hay mangas (ej: API caída), creamos objetos mínimos para que al menos se vea algo y permita intentar navegar
-    return this.history
-      .map((h) => {
-        const found = allMangas.find((m) => m.id === h.mangaId);
-        if (found) return { ...h, manga: found };
-        
-        // Fallback mock para los datos iniciales o si la API no devuelve ese ID
-        let mockManga: Manga = {
-          id: h.mangaId,
-          title: h.mangaId === 'sakura-uuid' ? 'Sakura Chronicles' : 'Manga Desconocido',
-          slug: h.mangaId === 'sakura-uuid' ? 'sakura-chronicles' : 'desconocido',
-          coverImagePath: '',
-          creatorName: 'Autor',
-          idSlug: '', // deprecated or unused
-          chaptersData: [],
-          createdAt: new Date().toISOString(),
-          genre: 'Varios',
-          mature: false,
-          synopsis: '',
-          viewsCount: 0
-        } as any;
-        
-        return { ...h, manga: mockManga };
+    const history = await this.getStoredHistory();
+    const catalogById = await this.getCatalogById();
+
+    return history
+      .map((entry) => {
+        const manga = catalogById.get(String(entry.mangaId));
+        if (manga) return { ...entry, manga };
+
+        return {
+          ...entry,
+          manga: {
+            id: String(entry.mangaId),
+            title: 'Manga desconocido',
+            slug: String(entry.mangaId),
+            synopsis: '',
+            genre: '',
+            mature: false,
+            viewsCount: 0,
+            coverImagePath: '',
+            creatorName: 'Autor',
+            createdAt: new Date().toISOString(),
+            chaptersData: [],
+          },
+        };
       })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
   async addToHistory(mangaId: string, chapterNumber: number, progress: number): Promise<void> {
-    const existingIndex = this.history.findIndex((h) => h.mangaId === mangaId);
+    const current = await this.getStoredHistory();
+    const mangaKey = String(mangaId);
+    const existingIndex = current.findIndex((entry) => String(entry.mangaId) === mangaKey);
+
     if (existingIndex >= 0) {
-      this.history[existingIndex] = {
-        mangaId,
+      current[existingIndex] = {
+        mangaId: mangaKey,
         chapterNumber,
         progress,
         timestamp: new Date(),
       };
     } else {
-      this.history.push({
-        mangaId,
+      current.push({
+        mangaId: mangaKey,
         chapterNumber,
         progress,
         timestamp: new Date(),
       });
     }
+
+    await this.saveHistory(current);
   }
 
   async clearHistory(): Promise<void> {
-    this.history = [];
+    const key = await this.getStorageKey();
+    await AsyncStorage.removeItem(key);
   }
 }

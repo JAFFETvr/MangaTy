@@ -1,13 +1,13 @@
 import { Colors } from '@/constants/theme';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { loadPublicWebcomics } from '@/src/core/storage/local-webcomic-storage';
 import { TYPOGRAPHY } from '@/src/core/theme/typography';
 import { MangaRemoteDataSource } from '@/src/features/manga/data/datasources/manga-remote-datasource';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const CARD_MARGIN = 12;
@@ -53,9 +53,11 @@ export function ExploreScreen() {
   const [allComics, setAllComics] = useState<MangaItem[]>([]);
   const [filteredComics, setFilteredComics] = useState<MangaItem[]>([]);
 
-  useEffect(() => {
-    loadComicsAndGenres();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadComicsAndGenres();
+    }, [])
+  );
 
   // Filtrar cuando cambia el género o la búsqueda
   useEffect(() => {
@@ -67,38 +69,37 @@ export function ExploreScreen() {
       setLoading(true);
       const dataSource = new MangaRemoteDataSource();
       
-      // Cargar mangas publicados del API
-      const apiComics = await dataSource.getPublishedComics(0, 100);
-
-      // Cargar mangas locales del usuario (en AsyncStorage)
-      const userId = await TokenStorageService.getUserId();
-      let localComics: MangaItem[] = [];
-      
-      if (userId) {
-        try {
-          const storageKey = `@mangaty_${userId}_webcomics`;
-          const storedStr = await AsyncStorage.getItem(storageKey);
-          if (storedStr) {
-            const stored = JSON.parse(storedStr);
-            localComics = stored.map((comic: any) => ({
-              id: comic.id,
-              title: comic.title,
-              slug: `local-${comic.id}`,
-              coverImagePath: comic.coverImage,
-              genre: Array.isArray(comic.genres) 
-                ? comic.genres.join(', ') 
-                : (comic.genres || ''),
-              creatorName: 'Tú',
-              isLocal: true,
-            }));
-          }
-        } catch (error) {
-          console.error('❌ Error loading local comics:', error);
-        }
+      // Cargar catálogo público (con fallback)
+      let apiComics: MangaItem[] = [];
+      try {
+        apiComics = await dataSource.getPublishedComics(0, 100);
+      } catch {
+        apiComics = await dataSource.getAllMangas();
       }
 
+      // Cargar comics locales públicos para que lectores y creadores los puedan ver
+      const publicLocal = await loadPublicWebcomics();
+      const localComics: MangaItem[] = publicLocal.map((comic: any) => ({
+        id: comic.id,
+        title: comic.title,
+        slug: `local-${comic.id}`,
+        coverImagePath: comic.coverImage,
+        genre: Array.isArray(comic.genres)
+          ? comic.genres.join(', ')
+          : (comic.genres || ''),
+        creatorName: comic.creatorName || 'Creador',
+        isLocal: true,
+      }));
+
       // Combinar mangas locales + API
-      const combinedComics = [...localComics, ...apiComics];
+      const comicsMap = new Map<string, MangaItem>();
+      for (const comic of localComics) comicsMap.set(comic.id, comic);
+      for (const comic of apiComics) {
+        if (!comicsMap.has(comic.id)) {
+          comicsMap.set(comic.id, comic);
+        }
+      }
+      const combinedComics = Array.from(comicsMap.values());
       setAllComics(combinedComics);
 
       // Contar mangas por género
@@ -162,23 +163,6 @@ export function ExploreScreen() {
     setFilteredComics(filtered);
   };
 
-  const renderGenreCard = ({ item }: { item: typeof genres[0] }) => (
-    <TouchableOpacity 
-      style={[
-        styles.cardContainer,
-        selectedGenre === item.title && styles.cardContainerSelected
-      ]} 
-      activeOpacity={0.8}
-      onPress={() => setSelectedGenre(selectedGenre === item.title ? null : item.title)}
-    >
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
-      <View style={styles.cardOverlay}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardSubtitle}>{item.count} mangas</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   const renderMangaCard = ({ item }: { item: MangaItem }) => {
     // Para mangas locales que tengan coverImage en base64 o data URI
     // Para mangas del API, construir la URL completa
@@ -186,30 +170,15 @@ export function ExploreScreen() {
       if (!item.coverImagePath) {
         return { uri: 'https://via.placeholder.com/200x300?text=No+Cover' };
       }
-      
-      // Si es un data URI (base64 de manga local)
-      if (item.coverImagePath.startsWith('data:')) {
-        return { uri: item.coverImagePath };
-      }
-      
-      // Si es una ruta del API
-      return { uri: `https://api.angeldev.fun/api/uploads/${item.coverImagePath}` };
+
+      return { uri: buildCoverUrl(item.coverImagePath) };
     };
 
     const handlePress = () => {
-      if (item.isLocal) {
-        // Para mangas locales, usar la ruta de gestión/edición
-        router.push({ 
-          pathname: '/manage-webcomic/[id]', 
-          params: { id: item.id } 
-        });
-      } else {
-        // Para mangas del API, usar la misma ruta que home-screen
-        router.push({ 
-          pathname: '/webcomic/[slug]', 
-          params: { slug: item.slug, mangaId: item.id } 
-        });
-      }
+      router.push({
+        pathname: '/webcomic/[slug]',
+        params: { slug: item.slug || item.id, mangaId: item.id },
+      });
     };
 
     return (
@@ -256,45 +225,65 @@ export function ExploreScreen() {
         </View>
       ) : (
         <FlatList
-          data={selectedGenre || searchQuery ? filteredComics : genres}
-          keyExtractor={(item) => (item as any).id}
-          numColumns={selectedGenre || searchQuery ? 2 : 2}
+          data={filteredComics}
+           keyExtractor={(item) => `${item.isLocal ? 'local' : 'api'}-${item.id}`}
+          numColumns={2}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
-              {!selectedGenre && !searchQuery && (
-                <Text style={styles.sectionTitle}>Géneros</Text>
-              )}
+              <Text style={styles.sectionTitle}>Géneros</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.genreFilters}>
+                {genres.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.genreFilterChip,
+                      selectedGenre === item.title && styles.genreFilterChipSelected,
+                    ]}
+                    onPress={() => setSelectedGenre(selectedGenre === item.title ? null : item.title)}
+                  >
+                    <Text
+                      style={[
+                        styles.genreFilterText,
+                        selectedGenre === item.title && styles.genreFilterTextSelected,
+                      ]}
+                    >
+                      {item.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={styles.filterHeader}>
+                {selectedGenre && (
+                  <TouchableOpacity
+                    style={styles.clearFilterBtn}
+                    onPress={() => setSelectedGenre(null)}
+                  >
+                    <Text style={styles.clearFilterText}>✕ {selectedGenre}</Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.sectionTitle}>
+                  {filteredComics.length} mangas encontrados
+                </Text>
+              </View>
               {(selectedGenre || searchQuery) && (
                 <View style={styles.filterHeader}>
-                  {selectedGenre && (
-                    <TouchableOpacity 
-                      style={styles.clearFilterBtn}
-                      onPress={() => setSelectedGenre(null)}
-                    >
-                      <Text style={styles.clearFilterText}>✕ {selectedGenre}</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Text style={styles.sectionTitle}>
-                    {filteredComics.length} mangas encontrados
-                  </Text>
+                  {!!searchQuery && <Text style={styles.searchingText}>Buscando: "{searchQuery}"</Text>}
                 </View>
               )}
             </>
           }
           ListEmptyComponent={
-            selectedGenre || searchQuery ? (
-              <View style={styles.emptyContainer}>
-                <Feather name="inbox" size={48} color="#CCC" />
-                <Text style={styles.emptyText}>
-                  No se encontraron mangas
-                </Text>
-              </View>
-            ) : null
+            <View style={styles.emptyContainer}>
+              <Feather name="inbox" size={48} color="#CCC" />
+              <Text style={styles.emptyText}>
+                No se encontraron mangas
+              </Text>
+            </View>
           }
-          renderItem={selectedGenre || searchQuery ? renderMangaCard : renderGenreCard}
+          renderItem={renderMangaCard}
         />
       )}
     </View>
@@ -394,6 +383,27 @@ const styles = StyleSheet.create({
   filterHeader: {
     marginBottom: 16,
   },
+  genreFilters: {
+    paddingBottom: 12,
+    gap: 8,
+  },
+  genreFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#F2F2F2',
+  },
+  genreFilterChipSelected: {
+    backgroundColor: '#FDE4EA',
+  },
+  genreFilterText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  genreFilterTextSelected: {
+    color: '#D8708E',
+  },
   clearFilterBtn: {
     alignSelf: 'flex-start',
     backgroundColor: '#F0F0F0',
@@ -405,6 +415,10 @@ const styles = StyleSheet.create({
   clearFilterText: {
     color: '#D8708E',
     fontWeight: '600',
+    fontSize: 12,
+  },
+  searchingText: {
+    color: '#999',
     fontSize: 12,
   },
   mangaCardContainer: {

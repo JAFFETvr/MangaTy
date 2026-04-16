@@ -1,11 +1,11 @@
-import { RegisterRequest, RegisterResponse } from '../../domain/entities/register-request';
-import {
-    IRegisterLocalDatasource,
-    IRegisterRemoteDatasource,
-} from '../datasources/register-datasource.interface';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { httpClient } from '@/src/core/http/http-client';
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RegisterRequest, RegisterResponse } from '../../domain/entities/register-request';
+import {
+  IRegisterLocalDatasource,
+  IRegisterRemoteDatasource,
+} from '../datasources/register-datasource.interface';
 
 export class RegisterLocalDatasource implements IRegisterLocalDatasource {
   async saveToken(token: string): Promise<void> {
@@ -36,12 +36,16 @@ interface AuthResponse {
 export class RegisterRemoteDatasource implements IRegisterRemoteDatasource {
   async register(request: RegisterRequest): Promise<RegisterResponse> {
     try {
-      const response = await httpClient.post<AuthResponse>('/auth/register', {
-        email: request.email,
-        username: request.username,
-        password: request.password,
-        role: request.role || 'ROLE_USER',
-      });
+      const response = await httpClient.post<AuthResponse>(
+        '/auth/register',
+        {
+          email: request.email,
+          username: request.username,
+          password: request.password,
+          role: request.role || 'ROLE_USER',
+        },
+        { skipAuth: true }
+      );
 
       // Save auth data persistently
       await TokenStorageService.saveAuth(response.token, response.userId, response.role);

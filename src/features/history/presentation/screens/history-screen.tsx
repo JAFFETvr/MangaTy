@@ -1,22 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import { Feather } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  Dimensions,
-  ActivityIndicator,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { HistoryViewModel } from '../view-models/history-view-model';
-import { buildCoverUrl } from '@/src/core/api/api-config';
-import { Colors } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
@@ -36,6 +34,12 @@ export default function HistoryScreen() {
     viewModel.loadHistory();
     return unsubscribe;
   }, [viewModel]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void viewModel.loadHistory();
+    }, [viewModel])
+  );
 
   const history = [...state.history].sort((a, b) => {
     if (sortBy === 'recent') {

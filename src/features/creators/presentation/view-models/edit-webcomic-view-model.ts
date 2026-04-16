@@ -1,9 +1,13 @@
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import {
+    getUserWebcomicsStorageKey,
+    upsertPublicWebcomic,
+} from '@/src/core/storage/local-webcomic-storage';
+import { persistImageUri } from '@/src/core/utils/persist-image-uri';
 import { Manga } from '@/src/features/manga/domain/entities';
 import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
 import { StateFlow } from '@/src/shared/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 export interface EditWebcomicState {
   manga: Manga | null;
@@ -118,7 +122,7 @@ export class EditWebcomicViewModel {
       }
 
       // Obtener webcomics del cache local con clave del usuario
-      const storageKey = `@mangaty_${userId}_webcomics`;
+      const storageKey = getUserWebcomicsStorageKey(userId);
       const storedStr = await AsyncStorage.getItem(storageKey);
       if (!storedStr) {
         throw new Error('Comic no encontrado');
@@ -131,17 +135,11 @@ export class EditWebcomicViewModel {
         throw new Error('Comic no encontrado para actualizar');
       }
 
-      // Persistir imagen si es local
       let persistedBanner = state.form.bannerImage;
-      if (persistedBanner && persistedBanner.startsWith('file://')) {
-        try {
-          const base64 = await FileSystem.readAsStringAsync(persistedBanner, {
-            encoding: 'base64',
-          });
-          persistedBanner = `data:image/jpeg;base64,${base64}`;
-        } catch (e) {
-          console.error('Error persisting banner:', e);
-        }
+      try {
+        persistedBanner = await persistImageUri(state.form.bannerImage);
+      } catch (e) {
+        console.error('Error persisting banner:', e);
       }
 
       // Actualizar el comic con los nuevos datos
@@ -155,6 +153,7 @@ export class EditWebcomicViewModel {
 
       // Guardar cambios en AsyncStorage con la clave del usuario
       await AsyncStorage.setItem(storageKey, JSON.stringify(webcomics));
+      await upsertPublicWebcomic(userId, webcomics[comicIndex]);
 
       this.updateState({ isSaving: false, success: true });
     } catch (error) {

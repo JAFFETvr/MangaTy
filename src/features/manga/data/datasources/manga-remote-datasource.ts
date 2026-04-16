@@ -11,40 +11,78 @@ import { API_BASE } from '@/src/core/api/api-config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Chapter } from '../../domain/entities/chapter';
 import { Manga } from '../../domain/entities/manga';
+import {
+  getUsernameByUserIdStorageKey,
+  getUserWebcomicsStorageKey,
+  loadPublicWebcomics,
+} from '@/src/core/storage/local-webcomic-storage';
 
 export class MangaRemoteDataSource {
+  private resolveCreatorName(item: any): string {
+    const creatorName =
+      item?.creatorName ??
+      item?.creator?.name ??
+      item?.creator?.username ??
+      item?.artistName ??
+      '';
+
+    return typeof creatorName === 'string' ? creatorName.trim() : '';
+  }
+
+  private async fetchPublicJson(url: string): Promise<any> {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      credentials: 'omit',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error al obtener comics: ${res.status}`);
+    }
+
+    return res.json();
+  }
+
   /**
    * Carga el detalle de un comic y sus capítulos en paralelo.
    * @param slug  – campo `slug` del listado (GET /api/comics/{slug})
    * @param mangaId – campo `id` (UUID) del listado (GET /api/comics/{id}/chapters)
    */
-  async getMangaDetail(slug: string, mangaId: string): Promise<Manga> {
-    // Detectar si es un webcomic local (slug comienza con "manga-")
-    const isLocalWebcomic = slug.startsWith('manga-');
+  async getMangaDetail(slug: string | undefined, mangaId: string): Promise<Manga> {
+    const safeSlug = slug ?? '';
+    // Detectar webcomic local (prefijo reservado)
+    const isLocalWebcomic = safeSlug.startsWith('local-');
 
     if (isLocalWebcomic) {
       // Ir directo a AsyncStorage para webcomics locales
       return this.getMangaDetailFromCache(mangaId);
     }
 
+    const comicIdentifier = safeSlug || mangaId;
+
     try {
-      const [comicRes, chaptersRes] = await Promise.all([
-        fetch(`${API_BASE}/comics/${slug}`),
-        fetch(`${API_BASE}/comics/${mangaId}/chapters`),
-      ]);
-
-      if (!comicRes.ok || !chaptersRes.ok) {
-        throw new Error('API error - trying fallback');
+      const comicRes = await fetch(`${API_BASE}/comics/${comicIdentifier}`);
+      if (!comicRes.ok) {
+        throw new Error('API comic detail error - trying fallback');
       }
-
       const comicJson = await comicRes.json();
-      const chaptersJson = await chaptersRes.json();
-
       // La API puede devolver el objeto directamente o dentro de { data: ... }
       const comic = comicJson.data ?? comicJson;
-      const rawChapters: any[] = Array.isArray(chaptersJson)
-        ? chaptersJson
-        : (chaptersJson.data ?? chaptersJson.chapters ?? []);
+
+      let rawChapters: any[] = [];
+      try {
+        const chaptersRes = await fetch(`${API_BASE}/comics/${mangaId}/chapters`);
+        if (chaptersRes.ok) {
+          const chaptersJson = await chaptersRes.json();
+          rawChapters = Array.isArray(chaptersJson)
+            ? chaptersJson
+            : (chaptersJson.data ?? chaptersJson.chapters ?? []);
+        }
+      } catch {
+        rawChapters = [];
+      }
 
       const chapters: Chapter[] = rawChapters.map((cap: any) => ({
         id: cap.id,
@@ -64,7 +102,7 @@ export class MangaRemoteDataSource {
         mature: comic.mature ?? false,
         viewsCount: comic.viewsCount ?? 0,
         coverImagePath: comic.coverImagePath ?? '',
-        creatorName: comic.creatorName ?? '',
+        creatorName: this.resolveCreatorName(comic),
         createdAt: comic.createdAt ?? '',
         chaptersData: chapters,
       };
@@ -84,20 +122,41 @@ export class MangaRemoteDataSource {
       // Importar TokenStorageService para obtener el userId
       const { TokenStorageService } = await import('@/src/core/http/token-storage-service');
       const userId = await TokenStorageService.getUserId();
-      
-      // Usar la clave aislada por usuario
-      const storageKey = userId ? `@mangaty_${userId}_webcomics` : '@mock_created_webcomics';
-      const storedStr = await AsyncStorage.getItem(storageKey);
-      
-      if (!storedStr) {
-        throw new Error('Comic no encontrado');
+
+      let webcomic: any | undefined;
+
+      const rawTargetId = String(mangaId);
+      const targetId = rawTargetId.startsWith('local-') ? rawTargetId.replace('local-', '') : rawTargetId;
+
+      if (userId) {
+        const userStorageKey = getUserWebcomicsStorageKey(userId);
+        const storedStr = await AsyncStorage.getItem(userStorageKey);
+        if (storedStr) {
+          const webcomics = JSON.parse(storedStr);
+          webcomic = webcomics.find((w: any) => String(w.id) === targetId);
+        }
       }
 
-      const webcomics = JSON.parse(storedStr);
-      const webcomic = webcomics.find((w: any) => w.id === mangaId);
+      if (!webcomic) {
+        const publicWebcomics = await loadPublicWebcomics();
+        webcomic = publicWebcomics.find((w: any) => String(w.id) === targetId);
+      }
 
       if (!webcomic) {
-        throw new Error('Comic no encontrado en cache');
+        const legacyStored = await AsyncStorage.getItem('@mock_created_webcomics');
+        if (legacyStored) {
+          const legacyWebcomics = JSON.parse(legacyStored);
+          webcomic = legacyWebcomics.find((w: any) => String(w.id) === targetId);
+        }
+      }
+
+      if (!webcomic) throw new Error('Comic no encontrado en cache');
+
+      let resolvedCreatorName = webcomic.creatorName;
+      if ((!resolvedCreatorName || resolvedCreatorName === 'Creador') && webcomic.creatorId) {
+        resolvedCreatorName = await AsyncStorage.getItem(
+          getUsernameByUserIdStorageKey(String(webcomic.creatorId)),
+        );
       }
 
       // Mapear capítulos si existen
@@ -113,13 +172,13 @@ export class MangaRemoteDataSource {
       return {
         id: webcomic.id,
         title: webcomic.title,
-        slug: `manga-${webcomic.id}`,
+        slug: `local-${webcomic.id}`,
         synopsis: webcomic.description,
-        genre: webcomic.genres ? webcomic.genres.join(', ') : '',
+        genre: Array.isArray(webcomic.genres) ? webcomic.genres.join(', ') : (webcomic.genres || ''),
         mature: false,
-        viewsCount: 0,
+        viewsCount: webcomic.viewsCount ?? 0,
         coverImagePath: webcomic.coverImage || '',
-        creatorName: 'Tu Webcomic',
+        creatorName: resolvedCreatorName || 'Creador',
         createdAt: new Date().toISOString(),
         chaptersData: chapters,
       };
@@ -133,10 +192,10 @@ export class MangaRemoteDataSource {
    * GET /api/comics — lista pública de comics para el home/explorar
    */
   async getAllMangas(): Promise<Manga[]> {
-    const res = await fetch(`${API_BASE}/comics`);
-    if (!res.ok) throw new Error(`Error al obtener comics: ${res.status}`);
-    const json = await res.json();
-    const list: any[] = Array.isArray(json) ? json : (json.data ?? json.comics ?? []);
+    const json = await this.fetchPublicJson(`${API_BASE}/comics?page=0&size=100`);
+    const list: any[] = Array.isArray(json)
+      ? json
+      : (json.content ?? json.data ?? json.comics ?? []);
 
     return list.map((item: any) => ({
       id: item.id,
@@ -147,7 +206,7 @@ export class MangaRemoteDataSource {
       mature: item.mature ?? false,
       viewsCount: item.viewsCount ?? 0,
       coverImagePath: item.coverImagePath ?? '',
-      creatorName: item.creatorName ?? '',
+      creatorName: this.resolveCreatorName(item),
       createdAt: item.createdAt ?? '',
       chaptersData: [],
     }));
@@ -158,9 +217,7 @@ export class MangaRemoteDataSource {
    * Útil para home screen con limit/offset
    */
   async getPublishedComics(page: number = 0, size: number = 20): Promise<Manga[]> {
-    const res = await fetch(`${API_BASE}/comics?page=${page}&size=${size}`);
-    if (!res.ok) throw new Error(`Error al obtener comics: ${res.status}`);
-    const json = await res.json();
+    const json = await this.fetchPublicJson(`${API_BASE}/comics?page=${page}&size=${size}`);
     
     // La API puede devolver { content: [...], pageable: {...}, ... }
     const list: any[] = json.content ?? (Array.isArray(json) ? json : (json.data ?? []));
@@ -174,7 +231,7 @@ export class MangaRemoteDataSource {
       mature: item.mature ?? false,
       viewsCount: item.viewsCount ?? 0,
       coverImagePath: item.coverImagePath ?? '',
-      creatorName: item.creatorName ?? '',
+      creatorName: this.resolveCreatorName(item),
       createdAt: item.createdAt ?? '',
       chaptersData: [],
     }));

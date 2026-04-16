@@ -4,7 +4,7 @@
 
 import { StateFlow } from '@/src/shared/hooks';
 import { User } from '../../domain/entities';
-import { GetUser, Logout, UpdateUser } from '../../domain/use-cases';
+import { ChangePassword, GetUser, Logout, UpdateUser } from '../../domain/use-cases';
 
 export interface ProfileViewModelState {
   user: User | null;
@@ -27,7 +27,8 @@ export class ProfileViewModel {
   constructor(
     private getUser: GetUser,
     private updateUser: UpdateUser,
-    private logout: Logout
+    private logout: Logout,
+    private changePasswordUseCase: ChangePassword
   ) {}
 
   getState(): ProfileViewModelState {
@@ -77,6 +78,20 @@ export class ProfileViewModel {
       this.updateState({
         error: 'Error al cerrar sesión',
       });
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    this.updateState({ isSaving: true, error: null });
+    try {
+      await this.changePasswordUseCase.execute(currentPassword, newPassword);
+      this.updateState({ isSaving: false });
+    } catch (error) {
+      this.updateState({
+        isSaving: false,
+        error: error instanceof Error ? error.message : 'No se pudo cambiar la contraseña',
+      });
+      throw error instanceof Error ? error : new Error('No se pudo cambiar la contraseña');
     }
   }
 

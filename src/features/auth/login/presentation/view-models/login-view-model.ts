@@ -1,6 +1,8 @@
+import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
+import { getUsernameByUserIdStorageKey } from '@/src/core/storage/local-webcomic-storage';
 import { StateFlow } from '@/src/shared/hooks/use-state-flow';
-import { LoginUseCase } from '../../domain/use-cases/login-use-case';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LoginUseCase } from '../../domain/use-cases/login-use-case';
 
 export const STORAGE_KEY_EMAIL = '@mangaty_email';
 
@@ -41,7 +43,12 @@ export class LoginViewModel {
       });
 
       // Persistir el email para mostrarlo en el perfil/configuración
+      const resolvedUsername = response.user.username || email.split('@')[0];
       await AsyncStorage.setItem(STORAGE_KEY_EMAIL, email);
+      await AsyncStorage.setItem(STORAGE_KEY_USERNAME, resolvedUsername);
+      if (response.user?.id) {
+        await AsyncStorage.setItem(getUsernameByUserIdStorageKey(String(response.user.id)), resolvedUsername);
+      }
 
       this._state.setValue({
         isLoading: false,
@@ -68,4 +75,3 @@ export class LoginViewModel {
     });
   }
 }
-
