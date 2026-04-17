@@ -101,7 +101,7 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>Configuración de capítulos</Text>
             <Text style={styles.infoDesc}>
-              Por defecto todos los capítulos son gratuitos con anuncios. Selecciona los capítulos que quieras convertir en de pago con monedas.
+              Por defecto todos los capítulos son gratuitos. Selecciona los capítulos que quieras convertir en de pago con monedas.
             </Text>
           </View>
         </View>
