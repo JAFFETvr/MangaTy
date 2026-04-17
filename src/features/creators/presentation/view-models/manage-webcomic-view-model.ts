@@ -1,6 +1,8 @@
-import { StateFlow } from '@/src/shared/hooks';
-import { Manga, Chapter } from '@/src/features/manga/domain/entities';
+import { Chapter, Manga } from '@/src/features/manga/domain/entities';
+import { FavoriteLocalDataSource } from '@/src/features/favorites/data/datasources/favorite-local-datasource';
+import { countUniqueReadersForManga } from '@/src/core/storage/local-webcomic-storage';
 import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
+import { StateFlow } from '@/src/shared/hooks';
 
 export interface ManageWebcomicState {
   manga: Manga | null;
@@ -29,6 +31,7 @@ const initialState: ManageWebcomicState = {
 export class ManageWebcomicViewModel {
   private stateSubject = new StateFlow<ManageWebcomicState>(initialState);
   state$ = this.stateSubject;
+  private favoriteLocalDataSource = new FavoriteLocalDataSource();
 
   constructor(private getMangaDetail: GetMangaDetail) {}
 
@@ -41,14 +44,25 @@ export class ManageWebcomicViewModel {
 
     try {
       const manga = await this.getMangaDetail.execute(slug, mangaId);
+      const localFavoriteCount = await this.favoriteLocalDataSource.countFavoritesForManga(manga.id);
+      const uniqueReaders = await countUniqueReadersForManga(manga.id);
+      const likesFromApi = Number(
+        (manga as any)?.likesCount ??
+          (manga as any)?.favoriteCount ??
+          (manga as any)?.favoritesCount ??
+          0,
+      );
+      const likes = Number.isFinite(likesFromApi)
+        ? Math.max(0, Math.max(localFavoriteCount, likesFromApi))
+        : Math.max(0, localFavoriteCount);
       
       this.updateState({
         manga,
         chapters: manga.chaptersData || [],
         stats: {
-          views: manga.viewsCount || 0,
-          followers: Math.floor(manga.viewsCount * 0.15), // Mock: 15% of views are followers
-          likes: Math.floor(manga.viewsCount * 0.25),     // Mock: 25% of views are likes
+          views: uniqueReaders,
+          followers: 0,
+          likes,
         },
         isLoading: false,
       });

@@ -10,7 +10,16 @@
  */
 
 import { buildCoverUrl } from '@/src/core/api/api-config';
-import { incrementPublicWebcomicViews } from '@/src/core/storage/local-webcomic-storage';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import {
+  incrementPublicWebcomicViews,
+  registerUniqueMangaView,
+} from '@/src/core/storage/local-webcomic-storage';
+import {
+  getMangaRestrictionMessageWithAdultPreference,
+  loadAdultContentPreference,
+  loadMangaAccessConfig,
+} from '@/src/core/storage/manga-access-storage';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
 import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
@@ -63,6 +72,7 @@ export default function WebcomicDetailScreen({
   const [purchaseState, setPurchaseState] = useState(purchaseViewModel.getState());
   const [modalVisible, setModalVisible] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [restrictionMessage, setRestrictionMessage] = useState<string | null>(null);
   const recordedHistoryRef = useRef<string | null>(null);
   const recordedViewRef = useRef<string | null>(null);
 
@@ -115,17 +125,36 @@ export default function WebcomicDetailScreen({
   }, [state.manga?.id]);
 
   useEffect(() => {
-    const registerLocalView = async () => {
+    const loadRestriction = async () => {
       if (!state.manga) return;
-      if (!state.manga.slug?.startsWith('local-')) return;
+      const [role, config] = await Promise.all([
+        TokenStorageService.getRole(),
+        loadMangaAccessConfig(state.manga.id),
+      ]);
+      const allowsAdultContent = await loadAdultContentPreference();
+      setRestrictionMessage(
+        getMangaRestrictionMessageWithAdultPreference(config, role, allowsAdultContent),
+      );
+    };
+
+    void loadRestriction();
+  }, [state.manga?.id]);
+
+  useEffect(() => {
+    const registerView = async () => {
+      if (!state.manga) return;
       if (recordedViewRef.current === state.manga.id) return;
 
       recordedViewRef.current = state.manga.id;
-      await incrementPublicWebcomicViews(state.manga.id);
-      await viewModel.loadDetail(slug, mangaId);
+      const isFirstViewForReader = await registerUniqueMangaView(state.manga.id);
+
+      if (isFirstViewForReader && state.manga.slug?.startsWith('local-')) {
+        await incrementPublicWebcomicViews(state.manga.id);
+        await viewModel.loadDetail(slug, mangaId);
+      }
     };
 
-    void registerLocalView();
+    void registerView();
   }, [state.manga?.id, state.manga?.slug, mangaId, slug, viewModel]);
 
   const handleConfirmPurchaseNavigation = () => {
@@ -175,6 +204,10 @@ export default function WebcomicDetailScreen({
     manga.chaptersData[0];
 
   const handleStartReading = () => {
+    if (restrictionMessage) {
+      Alert.alert('Acceso restringido', restrictionMessage);
+      return;
+    }
     if (!firstAvailableChapter) return;
     void historyViewModel.addEntry(manga.id, firstAvailableChapter.chapterNumber, 0);
     router.push({
@@ -188,6 +221,10 @@ export default function WebcomicDetailScreen({
   };
 
   const handleChapterPress = (ch: Chapter) => {
+    if (restrictionMessage) {
+      Alert.alert('Acceso restringido', restrictionMessage);
+      return;
+    }
     const unlocked = isUnlocked(ch);
     const isFree = !ch.premium;
 
@@ -318,6 +355,12 @@ export default function WebcomicDetailScreen({
             <Text style={styles.sortText}>Ordenar</Text>
           </TouchableOpacity>
         </View>
+        {restrictionMessage ? (
+          <View style={styles.restrictionBanner}>
+            <Feather name="alert-triangle" size={16} color="#B64868" />
+            <Text style={styles.restrictionBannerText}>{restrictionMessage}</Text>
+          </View>
+        ) : null}
 
         {/* ── Lista de Capítulos ── */}
         <View style={styles.chaptersList}>
@@ -336,6 +379,7 @@ export default function WebcomicDetailScreen({
                   key={chapter.id}
                   style={styles.chapterCard}
                   activeOpacity={0.7}
+                  disabled={Boolean(restrictionMessage)}
                   onPress={() => handleChapterPress(chapter)}
                 >
                   {/* Ícono */}
@@ -388,10 +432,10 @@ export default function WebcomicDetailScreen({
       {/* ── Botón Comenzar a Leer ── */}
       <View style={[styles.bottomFixedArea, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <TouchableOpacity
-          style={[styles.readButton, !firstAvailableChapter && styles.readButtonDisabled]}
+          style={[styles.readButton, (!firstAvailableChapter || Boolean(restrictionMessage)) && styles.readButtonDisabled]}
           activeOpacity={0.85}
           onPress={handleStartReading}
-          disabled={!firstAvailableChapter}
+          disabled={!firstAvailableChapter || Boolean(restrictionMessage)}
         >
           <Feather name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Text style={styles.readButtonText}>Comenzar a Leer</Text>
@@ -488,6 +532,23 @@ const styles = StyleSheet.create({
   },
   sortText: { color: '#D8708E', fontSize: 14, fontWeight: '500' },
   chaptersList: { gap: 12 },
+  restrictionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF0F2',
+    borderWidth: 1,
+    borderColor: '#FAD6DE',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  restrictionBannerText: {
+    color: '#B64868',
+    fontSize: 12,
+    flex: 1,
+  },
   emptyChapters: { alignItems: 'center', paddingVertical: 32 },
   emptyChaptersText: { color: '#999', fontSize: 13 },
   chapterCard: {

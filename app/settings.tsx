@@ -1,5 +1,5 @@
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
-import { persistImageUri } from '@/src/core/utils/persist-image-uri';
+import { buildCoverUrl } from '@/src/core/api/api-config';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
 import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
@@ -23,8 +23,6 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-export const getPhotoStorageKey = (email: string) => `@mangaty_photo_${email}`;
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -73,29 +71,16 @@ export default function SettingsScreen() {
 
   // Cargar foto específica del usuario cuando su info esté disponible
   useEffect(() => {
-    if (user?.email) {
-      AsyncStorage.getItem(getPhotoStorageKey(user.email)).then((saved) => {
-        if (saved?.startsWith('blob:')) {
-          void AsyncStorage.removeItem(getPhotoStorageKey(user.email));
-          setPhotoUri(null);
-          return;
-        }
-        setPhotoUri(saved || null);
-      });
-    }
-  }, [user?.email]);
+    setPhotoUri(user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null);
+  }, [user?.avatarUrl]);
 
   const savePhoto = async (uri: string) => {
     try {
-      const finalUri = await persistImageUri(uri);
-      setPhotoUri(finalUri);
-      if (user?.email) {
-        // Guardar la URL/data URI para persistencia
-        await AsyncStorage.setItem(getPhotoStorageKey(user.email), finalUri || '');
-      }
+      const uploadedAvatarUrl = await viewModel.updateProfilePhoto(uri);
+      setPhotoUri(uploadedAvatarUrl);
     } catch (error) {
       console.error('Error saving photo:', error);
-      Alert.alert('Error', 'No se pudo guardar la foto');
+      Alert.alert('Error', 'No se pudo subir la foto al servidor');
     }
   };
 

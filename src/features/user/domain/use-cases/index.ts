@@ -29,6 +29,14 @@ export class ChangePassword {
   }
 }
 
+export class UploadAvatar {
+  constructor(private repository: IUserRepository) {}
+
+  async execute(imageUri: string): Promise<string> {
+    return this.repository.uploadAvatar(imageUri);
+  }
+}
+
 export class Logout {
   constructor(private repository: IUserRepository) {}
 

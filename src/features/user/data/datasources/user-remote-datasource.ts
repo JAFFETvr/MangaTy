@@ -5,9 +5,11 @@
 
 import { httpClient } from '@/src/core/http/http-client';
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { UPLOADS_BASE } from '@/src/core/api/api-config';
 import { STORAGE_KEY_EMAIL } from '@/src/features/auth/login/presentation/view-models/login-view-model';
 import { STORAGE_KEY_USERNAME } from '@/src/features/auth/register/presentation/view-models/register-view-model';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { User } from '../../domain/entities';
 
 interface WalletBalance {
@@ -15,29 +17,107 @@ interface WalletBalance {
   tyCoins: number;
 }
 
+interface UserProfileResponse {
+  id?: string;
+  userId?: string;
+  email?: string;
+  username?: string;
+  name?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  avatarPath?: string;
+  avatar_path?: string;
+}
+
 export class UserRemoteDataSource {
+  private readonly profileEndpoints = ['/users/me', '/user/me', '/auth/me', '/auth/profile', '/profile'];
+  private readonly avatarUploadEndpoint = '/users/avatar';
+
+  private resolveAvatarUrl(value?: string | null): string | null {
+    if (!value) return null;
+    if (value.startsWith('http') || value.startsWith('data:') || value.startsWith('file://') || value.startsWith('blob:')) {
+      return value;
+    }
+    return `${UPLOADS_BASE}${value}`;
+  }
+
+  private async getRemoteProfile(): Promise<UserProfileResponse | null> {
+    for (const endpoint of this.profileEndpoints) {
+      try {
+        const profile = await httpClient.get<UserProfileResponse>(endpoint);
+        if (profile && typeof profile === 'object') {
+          return profile;
+        }
+      } catch {
+        // Ignorar endpoints que no existan en backend y probar el siguiente
+      }
+    }
+    return null;
+  }
+
+  async uploadAvatar(imageUri: string): Promise<string> {
+    const buildFormData = async (): Promise<FormData> => {
+      const formData = new FormData();
+      if (Platform.OS === 'web') {
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+        formData.append('file', blob, 'avatar.jpg');
+        // Compatibilidad con backends que esperan "avatar" en lugar de "file"
+        formData.append('avatar', blob, 'avatar.jpg');
+      } else {
+        const filePayload = {
+          uri: imageUri,
+          name: 'avatar.jpg',
+          type: 'image/jpeg',
+        } as any;
+        formData.append('file', filePayload);
+        formData.append('avatar', filePayload);
+      }
+      return formData;
+    };
+
+    try {
+      const formData = await buildFormData();
+      const response = await httpClient.postFormData<any>(this.avatarUploadEndpoint, formData);
+      const avatarRaw =
+        response?.avatarUrl ||
+        response?.avatar_url ||
+        response?.avatarPath ||
+        response?.avatar_path ||
+        response?.avatar ||
+        response?.url;
+      const avatarUrl = this.resolveAvatarUrl(avatarRaw);
+      if (avatarUrl) {
+        return avatarUrl;
+      }
+      throw new Error('El backend no devolvió la URL del avatar');
+    } catch (error) {
+      const backendMessage =
+        error instanceof Error ? error.message : 'No se pudo subir la foto de perfil al backend';
+      throw new Error(
+        `Error al subir avatar en ${this.avatarUploadEndpoint}. ${backendMessage}. ` +
+        'El backend debe exponer un endpoint de avatar funcional para completar esta acción.'
+      );
+    }
+  }
+
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const endpoints = ['/auth/change-password', '/users/change-password', '/user/change-password'];
     const payloads = [
       { currentPassword, newPassword },
       { oldPassword: currentPassword, newPassword },
     ];
     let lastError: unknown = null;
-
-    for (const endpoint of endpoints) {
-      for (const payload of payloads) {
-        try {
-          await httpClient.post(endpoint, payload);
-          return;
-        } catch (error) {
-          lastError = error;
-        }
+    for (const payload of payloads) {
+      try {
+        await httpClient.post('/auth/change-password', payload);
+        return;
+      } catch (error) {
+        lastError = error;
+        // Intentar variante de payload si la primera falla
       }
     }
 
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('No se pudo cambiar la contraseña');
+    throw lastError instanceof Error ? lastError : new Error('No se pudo cambiar la contraseña');
   }
 
   async getUser(): Promise<User | null> {
@@ -47,9 +127,12 @@ export class UserRemoteDataSource {
         return null;
       }
 
+      const remoteProfile = await this.getRemoteProfile();
+
       // Obtener username y email guardados
       let username = await AsyncStorage.getItem(STORAGE_KEY_USERNAME);
       const email = await AsyncStorage.getItem(STORAGE_KEY_EMAIL);
+      username = remoteProfile?.username || remoteProfile?.name || username;
       if (!username) {
         const rawAuthUser = await AsyncStorage.getItem('auth_user');
         if (rawAuthUser) {
@@ -72,11 +155,14 @@ export class UserRemoteDataSource {
 
       // Fetch wallet balance to get user's TyCoins
       const balance = await httpClient.get<WalletBalance>('/wallet/balance');
+      const avatarRaw = remoteProfile?.avatarUrl || remoteProfile?.avatar_url || remoteProfile?.avatarPath || remoteProfile?.avatar_path;
+      const profileEmail = remoteProfile?.email || email || '';
 
       return {
-        id: auth.userId,
+        id: remoteProfile?.id || remoteProfile?.userId || auth.userId,
         name: username || 'Mi Perfil',
-        email: email || '',
+        email: profileEmail,
+        avatarUrl: this.resolveAvatarUrl(avatarRaw),
         coinBalance: balance.tyCoins,
         memberSince: new Date(),
         stats: {

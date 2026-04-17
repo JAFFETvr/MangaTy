@@ -78,20 +78,33 @@ export class MangaRemoteDataSource {
           const chaptersJson = await chaptersRes.json();
           rawChapters = Array.isArray(chaptersJson)
             ? chaptersJson
-            : (chaptersJson.data ?? chaptersJson.chapters ?? []);
+            : (chaptersJson.content ?? chaptersJson.data ?? chaptersJson.chapters ?? []);
         }
       } catch {
         rawChapters = [];
       }
 
+      // Si API devuelve vacío pero existen capítulos en cache local para este mismo manga,
+      // usar ese respaldo para mantener coherencia con historial/lector.
+      if (rawChapters.length === 0) {
+        const publicWebcomics = await loadPublicWebcomics();
+        const localMatch = publicWebcomics.find((w: any) => String(w?.id) === String(mangaId));
+        const localChapters = Array.isArray(localMatch?.chapters) ? localMatch.chapters : [];
+        if (localChapters.length > 0) {
+          rawChapters = localChapters;
+        }
+      }
+
       const chapters: Chapter[] = rawChapters.map((cap: any) => ({
-        id: cap.id,
-        chapterNumber: cap.chapterNumber,
-        title: cap.title,
-        premium: cap.premium ?? false,
-        priceTyCoins: cap.priceTyCoins ?? 0,
+        id: cap.id ?? cap.chapterId,
+        chapterNumber: cap.chapterNumber ?? cap.number ?? 1,
+        title: cap.title ?? `Capítulo ${cap.chapterNumber ?? cap.number ?? ''}`.trim(),
+        premium: cap.premium ?? cap.isPremium ?? false,
+        priceTyCoins: cap.priceTyCoins ?? cap.price ?? 0,
         publishedAt: cap.publishedAt ?? '',
-      }));
+      }))
+        .filter((cap) => Boolean(cap.id))
+        .sort((a, b) => (a.chapterNumber ?? 0) - (b.chapterNumber ?? 0));
 
       const manga: Manga = {
         id: comic.id,

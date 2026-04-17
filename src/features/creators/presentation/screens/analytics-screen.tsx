@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnalyticsViewModel } from '../view-models/analytics-view-model';
 
 interface Props {
@@ -55,7 +55,7 @@ export default function AnalyticsScreen({ slug, mangaId }: Props) {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Analíticas</Text>
-          <Text style={styles.headerSubtitle}>{state.manga?.title || 'holaa'}</Text>
+          <Text style={styles.headerSubtitle}>{state.manga?.title || 'Mi webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>

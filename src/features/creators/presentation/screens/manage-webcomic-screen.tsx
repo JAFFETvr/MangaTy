@@ -39,6 +39,7 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
       // Obtener el userId actual
       const userId = await TokenStorageService.getUserId();
       setCurrentUserId(userId);
+      const userRole = await TokenStorageService.getRole();
 
       // Verificar si es un manga local (comienza con "local-" o es timestamp)
       const isLocal = mangaId.includes('-') === false || mangaId.length < 20; // timestamp es corto
@@ -60,8 +61,8 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
           setIsOwner(false);
         }
       } else {
-        // Para mangas del API, por ahora permitir ver (en futuro verificar creatorId con API)
-        setIsOwner(false);
+        // Para mangas del API, permitir gestión si el usuario actual es creador
+        setIsOwner(userRole === 'ROLE_CREATOR');
       }
 
       viewModel.loadMangaDetails(slug, mangaId);
@@ -82,7 +83,7 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
   const stats = [
     { label: 'Vistas', value: state.stats.views, icon: 'eye' },
     { label: 'Seguidores', value: state.stats.followers, icon: 'users' },
-    { label: 'Me gusta', value: state.stats.likes, icon: 'trending-up' },
+    { label: 'Me gusta', value: state.stats.likes, icon: 'heart' },
   ];
 
   if (state.isLoading && !state.manga) {
@@ -94,6 +95,10 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
   }
 
   const manga = state.manga;
+  const genres = (manga?.genre || '')
+    .split(',')
+    .map((g) => g.trim())
+    .filter(Boolean);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -136,11 +141,11 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
             <Text style={styles.mangaTitle}>{manga?.title || 'Cargando...'}</Text>
             
             <View style={styles.genresRow}>
-              {manga?.genre.split(',').map((g, i) => (
+              {genres.length > 0 ? genres.map((g, i) => (
                 <View key={i} style={styles.genreTag}>
                   <Text style={styles.genreText}>{g.trim()}</Text>
                 </View>
-              )) || (
+              )) : (
                 <View style={styles.genreTag}>
                   <Text style={styles.genreText}>Género</Text>
                 </View>
@@ -148,7 +153,7 @@ export default function ManageWebcomicScreen({ slug, mangaId }: Props) {
             </View>
 
             <Text style={styles.mangaSyncopsis} numberOfLines={2}>
-              {manga?.synopsis || 'fafa'}
+              {manga?.synopsis || 'Sin sinopsis disponible.'}
             </Text>
           </View>
         </View>

@@ -81,4 +81,37 @@ export class FavoriteLocalDataSource {
     const current = await this.getFavoriteIds();
     return current.includes(String(mangaId));
   }
+
+  async countFavoritesForManga(mangaId: string): Promise<number> {
+    const targetId = String(mangaId);
+    const allKeys = await AsyncStorage.getAllKeys();
+    const favoriteKeys = allKeys.filter(
+      (key) => key.startsWith('@mangaty_') && key.endsWith('_favorites'),
+    );
+
+    if (favoriteKeys.length === 0) {
+      return 0;
+    }
+
+    const entries = await AsyncStorage.multiGet(favoriteKeys);
+    let count = 0;
+
+    for (const [, value] of entries) {
+      if (!value) continue;
+
+      try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) continue;
+
+        const ids = parsed.map((id) => String(id));
+        if (ids.includes(targetId)) {
+          count += 1;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return count;
+  }
 }

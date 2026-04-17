@@ -1,3 +1,6 @@
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -13,7 +16,6 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 interface Props {
   mangaId: string;
@@ -43,6 +45,42 @@ export default function ChapterViewerScreen({ mangaId, chapterId }: Props) {
   const loadChapter = async () => {
     try {
       setIsLoading(true);
+      const token = await TokenStorageService.getToken();
+      if (token) {
+        httpClient.setToken(token);
+      }
+
+      try {
+        const chapterList = await httpClient.get<any>(`/comics/${mangaId}/chapters`);
+        const chapters = Array.isArray(chapterList)
+          ? chapterList
+          : (chapterList?.content ?? chapterList?.data ?? chapterList?.chapters ?? []);
+        const chapterMeta = chapters.find((c: any) => String(c.id) === String(chapterId));
+
+        const pagesResponse = await httpClient.get<any>(`/comics/${mangaId}/chapters/${chapterId}/pages`);
+        const pagesList = Array.isArray(pagesResponse)
+          ? pagesResponse
+          : (pagesResponse?.content ?? pagesResponse?.data ?? pagesResponse?.pages ?? []);
+        const pages = pagesList
+          .map((p: any) => (typeof p?.imagePath === 'string' ? buildCoverUrl(p.imagePath) : null))
+          .filter((p: string | null): p is string => Boolean(p));
+
+        if (pages.length > 0) {
+          setChapter({
+            id: String(chapterId),
+            chapterNumber: chapterMeta?.chapterNumber ?? 1,
+            title: chapterMeta?.title ?? 'Capítulo',
+            pages,
+            publishedAt: chapterMeta?.publishedAt ?? '',
+            premium: chapterMeta?.premium ?? false,
+            priceTyCoins: chapterMeta?.priceTyCoins ?? 0,
+          });
+          return;
+        }
+      } catch {
+        // fallback local
+      }
+
       const userId = await TokenStorageService.getUserId();
       if (!userId) {
         throw new Error('No se pudo obtener el usuario');
@@ -51,19 +89,14 @@ export default function ChapterViewerScreen({ mangaId, chapterId }: Props) {
       const storageKey = `@mangaty_${userId}_webcomics`;
       const storedStr = await AsyncStorage.getItem(storageKey);
       if (!storedStr) {
-        throw new Error('Comic no encontrado');
+        throw new Error('Capítulo no encontrado');
       }
 
       const webcomics = JSON.parse(storedStr);
-      const comic = webcomics.find((w: any) => w.id === mangaId);
-
-      if (!comic) {
-        throw new Error('Comic no encontrado');
-      }
-
-      const foundChapter = comic.chapters.find((c: any) => c.id === chapterId);
-      if (!foundChapter) {
-        throw new Error('Capítulo no encontrado');
+      const comic = webcomics.find((w: any) => String(w.id) === String(mangaId));
+      const foundChapter = comic?.chapters?.find((c: any) => String(c.id) === String(chapterId));
+      if (!foundChapter || !Array.isArray(foundChapter.pages) || foundChapter.pages.length === 0) {
+        throw new Error('Capítulo sin páginas');
       }
 
       setChapter(foundChapter);

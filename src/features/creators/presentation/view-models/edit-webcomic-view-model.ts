@@ -1,7 +1,8 @@
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import {
-    getUserWebcomicsStorageKey,
-    upsertPublicWebcomic,
+  getUserWebcomicsStorageKey,
+  LocalWebcomicRecord,
+  upsertPublicWebcomic,
 } from '@/src/core/storage/local-webcomic-storage';
 import { persistImageUri } from '@/src/core/utils/persist-image-uri';
 import { Manga } from '@/src/features/manga/domain/entities';
@@ -67,7 +68,9 @@ export class EditWebcomicViewModel {
         form: {
           title: manga.title,
           description: manga.synopsis,
-          selectedGenres: manga.genre.split(',').map(g => g.trim()),
+          selectedGenres: manga.genre
+            ? manga.genre.split(',').map((g) => g.trim()).filter(Boolean)
+            : [],
           bannerImage: manga.coverImagePath,
           promoImage: null, // Mock
         },
@@ -121,19 +124,25 @@ export class EditWebcomicViewModel {
         throw new Error('No se pudo obtener el usuario');
       }
 
-      // Obtener webcomics del cache local con clave del usuario
+      const title = state.form.title.trim();
+      const description = state.form.description.trim();
+      const selectedGenres = state.form.selectedGenres.filter(Boolean);
+
+      if (!title) {
+        throw new Error('El título es obligatorio');
+      }
+      if (!description) {
+        throw new Error('La descripción es obligatoria');
+      }
+      if (selectedGenres.length === 0) {
+        throw new Error('Debes seleccionar al menos un género');
+      }
+
       const storageKey = getUserWebcomicsStorageKey(userId);
       const storedStr = await AsyncStorage.getItem(storageKey);
-      if (!storedStr) {
-        throw new Error('Comic no encontrado');
-      }
-
-      const webcomics = JSON.parse(storedStr);
-      const comicIndex = webcomics.findIndex((w: any) => w.id === mangaId);
-
-      if (comicIndex === -1) {
-        throw new Error('Comic no encontrado para actualizar');
-      }
+      const webcomics = storedStr ? JSON.parse(storedStr) : [];
+      const normalizedWebcomics = Array.isArray(webcomics) ? webcomics : [];
+      const comicIndex = normalizedWebcomics.findIndex((w: any) => String(w?.id) === String(mangaId));
 
       let persistedBanner = state.form.bannerImage;
       try {
@@ -142,18 +151,31 @@ export class EditWebcomicViewModel {
         console.error('Error persisting banner:', e);
       }
 
-      // Actualizar el comic con los nuevos datos
-      webcomics[comicIndex] = {
-        ...webcomics[comicIndex],
-        title: state.form.title,
-        description: state.form.description,
-        genres: state.form.selectedGenres,
+      const existing = comicIndex >= 0 ? normalizedWebcomics[comicIndex] : null;
+      const updatedComic: LocalWebcomicRecord = {
+        id: String(mangaId),
+        title,
+        description,
+        genres: selectedGenres,
         coverImage: persistedBanner,
+        creatorId: existing?.creatorId ?? userId,
+        creatorName: existing?.creatorName ?? state.manga?.creatorName ?? 'Creador',
+        viewsCount: existing?.viewsCount ?? state.manga?.viewsCount ?? 0,
+        chapters: existing?.chapters ?? [],
+        createdAt: existing?.createdAt ?? state.manga?.createdAt ?? new Date().toISOString(),
       };
 
-      // Guardar cambios en AsyncStorage con la clave del usuario
-      await AsyncStorage.setItem(storageKey, JSON.stringify(webcomics));
-      await upsertPublicWebcomic(userId, webcomics[comicIndex]);
+      if (comicIndex >= 0) {
+        normalizedWebcomics[comicIndex] = {
+          ...normalizedWebcomics[comicIndex],
+          ...updatedComic,
+        };
+      } else {
+        normalizedWebcomics.push(updatedComic);
+      }
+
+      await AsyncStorage.setItem(storageKey, JSON.stringify(normalizedWebcomics));
+      await upsertPublicWebcomic(userId, updatedComic);
 
       this.updateState({ isSaving: false, success: true });
     } catch (error) {

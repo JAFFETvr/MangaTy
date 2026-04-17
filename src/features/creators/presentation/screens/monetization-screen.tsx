@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MonetizationViewModel } from '../view-models/monetization-view-model';
 
 interface Props {
@@ -26,8 +27,9 @@ export default function MonetizationScreen({ mangaId }: Props) {
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
+    void viewModel.loadMonetization(mangaId);
     return unsubscribe;
-  }, []);
+  }, [viewModel, mangaId]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -38,27 +40,59 @@ export default function MonetizationScreen({ mangaId }: Props) {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Monetización</Text>
-          <Text style={styles.headerSubtitle}>holaa</Text>
+          <Text style={styles.headerSubtitle}>{state.mangaTitle || 'Mi webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {state.error ? (
+          <View style={styles.errorBanner}>
+            <Feather name="alert-circle" size={16} color="#D8708E" />
+            <Text style={styles.errorBannerText}>{state.error}</Text>
+          </View>
+        ) : null}
         
         {/* Connect Stripe */}
         <Text style={styles.sectionLabel}>Conectar cuenta de Stripe</Text>
-        <TouchableOpacity style={styles.stripeCard} onPress={() => viewModel.connectStripe()}>
+        <View style={styles.stripeCard}>
           <View style={styles.stripeIcon}>
             <MaterialIcons name="credit-card" size={24} color="#D8708E" />
           </View>
           <View style={styles.stripeTextContainer}>
-            <Text style={styles.stripeTitle}>Conectar con Stripe</Text>
-            <Text style={styles.stripeDesc}>
-              Conecta tu cuenta para recibir pagos de forma segura
+            <Text style={styles.stripeTitle}>
+              {state.isConnectedWithStripe ? 'Cuenta conectada' : 'Conectar con Stripe'}
             </Text>
+            <Text style={styles.stripeDesc}>
+              {state.isConnectedWithStripe
+                ? `Cuenta vinculada: ${state.stripeEmail}`
+                : 'Conecta tu cuenta para recibir pagos de forma segura'}
+            </Text>
+            {!state.isConnectedWithStripe ? (
+              <TextInput
+                style={styles.emailInput}
+                placeholder="tu-correo@stripe.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={state.stripeEmail}
+                onChangeText={(txt) => viewModel.setStripeEmail(txt)}
+              />
+            ) : null}
           </View>
-          <Feather name="chevron-right" size={20} color="#999" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.connectButton, state.isLoading && styles.disabledButton]}
+            onPress={() => viewModel.connectStripe(mangaId)}
+            disabled={state.isLoading || state.isConnectedWithStripe}
+          >
+            {state.isLoading ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={styles.connectButtonText}>
+                {state.isConnectedWithStripe ? 'Conectada' : 'Conectar'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Balance Section */}
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Ver saldo acumulado</Text>
@@ -101,7 +135,9 @@ export default function MonetizationScreen({ mangaId }: Props) {
                   </View>
                 </View>
                 <View style={styles.historyAmountContainer}>
-                  <Text style={styles.historyAmount}>+${t.amount.toFixed(2)}</Text>
+                  <Text style={styles.historyAmount}>
+                    {t.type.toLowerCase().includes('retiro') ? '-' : '+'}${t.amount.toFixed(2)}
+                  </Text>
                   <Text style={[styles.historyStatus, { color: t.status === 'Completado' ? '#27AE60' : '#F2994A' }]}>
                     {t.status}
                   </Text>
@@ -122,12 +158,23 @@ export default function MonetizationScreen({ mangaId }: Props) {
           <View style={styles.withdrawIconBack}>
              <MaterialIcons name="credit-card" size={40} color="#666" />
           </View>
-          <Text style={styles.withdrawTitle}>Conecta tu cuenta de Stripe</Text>
-          <Text style={styles.withdrawDesc}>
-            Necesitas conectar una cuenta de Stripe para retirar tu dinero
+          <Text style={styles.withdrawTitle}>
+            {state.isConnectedWithStripe ? 'Retirar a Stripe' : 'Conecta tu cuenta de Stripe'}
           </Text>
-          <TouchableOpacity style={styles.primaryActionButton}>
-             <Text style={styles.primaryActionButtonText}>Conectar Stripe</Text>
+          <Text style={styles.withdrawDesc}>
+            {state.isConnectedWithStripe
+              ? 'Cuando solicites retiro, tu saldo disponible pasará a estado pendiente.'
+              : 'Necesitas conectar una cuenta de Stripe para retirar tu dinero'}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.primaryActionButton,
+              (!state.isConnectedWithStripe || state.availableBalance <= 0 || state.isLoading) && styles.disabledButton,
+            ]}
+            onPress={() => viewModel.requestWithdrawal(mangaId)}
+            disabled={!state.isConnectedWithStripe || state.availableBalance <= 0 || state.isLoading}
+          >
+             <Text style={styles.primaryActionButtonText}>Solicitar retiro</Text>
           </TouchableOpacity>
         </View>
 
@@ -185,13 +232,56 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   stripeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#FEEBED',
+    gap: 12,
+  },
+  emailInput: {
+    marginTop: 10,
+    backgroundColor: '#FFF9FA',
+    borderWidth: 1,
+    borderColor: '#FEEBED',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#1A1A2E',
+  },
+  connectButton: {
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#E2919E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  errorBanner: {
+    backgroundColor: '#FEF0F2',
+    borderColor: '#FAD6DE',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    color: '#B64868',
+    fontSize: 12,
+    flex: 1,
   },
   stripeIcon: {
     width: 48,

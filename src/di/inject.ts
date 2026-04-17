@@ -102,7 +102,7 @@ export function setupDependencies(): void {
     // User feature
     const { UserRemoteDataSource } = require('@/src/features/user/data/datasources/user-remote-datasource');
     const { UserRepositoryImpl } = require('@/src/features/user/data/repositories/user-repository-impl');
-    const { GetUser, UpdateUser, Logout, ChangePassword, SpendCoins, ValidateUserBalance, GetUserCoinBalance } = require('@/src/features/user/domain/use-cases');
+    const { GetUser, UpdateUser, Logout, ChangePassword, UploadAvatar, SpendCoins, ValidateUserBalance, GetUserCoinBalance } = require('@/src/features/user/domain/use-cases');
     const { ProfileViewModel } = require('@/src/features/user/presentation');
 
     const userDataSource = new UserRemoteDataSource();
@@ -112,11 +112,12 @@ export function setupDependencies(): void {
     const updateUser = new UpdateUser(userRepository);
     const logout = new Logout(userRepository);
     const changePassword = new ChangePassword(userRepository);
+    const uploadAvatar = new UploadAvatar(userRepository);
     const spendCoins = new SpendCoins(userRepository);
     const validateUserBalance = new ValidateUserBalance(userRepository);
     const getUserCoinBalance = new GetUserCoinBalance(userRepository);
 
-    const profileViewModel = new ProfileViewModel(getUser, updateUser, logout, changePassword);
+    const profileViewModel = new ProfileViewModel(getUser, updateUser, logout, changePassword, uploadAvatar);
 
     serviceLocator.registerSingleton(DIKeys.USER_REPOSITORY, () => userRepository);
     serviceLocator.registerSingleton(DIKeys.PROFILE_VIEW_MODEL, () => profileViewModel);
@@ -151,7 +152,6 @@ export function setupDependencies(): void {
     const manageWebcomicViewModel = new ManageWebcomicViewModel(getMangaDetail);
     const analyticsViewModel = new AnalyticsViewModel(getMangaDetail);
     const createChapterViewModel = new CreateChapterViewModel();
-    const monetizationViewModel = new MonetizationViewModel();
     const editWebcomicViewModel = new EditWebcomicViewModel(getMangaDetail);
     const accessConfigViewModel = new AccessConfigViewModel();
     const freeChaptersViewModel = new FreeChaptersViewModel(getMangaDetail);
@@ -167,7 +167,8 @@ export function setupDependencies(): void {
     serviceLocator.registerSingleton(DIKeys.ANALYTICS_VIEW_MODEL, () => analyticsViewModel);
     // CREATE_CHAPTER_VIEW_MODEL: Factory (not singleton) - cada pantalla obtiene su propia instancia
     serviceLocator.register(DIKeys.CREATE_CHAPTER_VIEW_MODEL, () => new CreateChapterViewModel());
-    serviceLocator.registerSingleton(DIKeys.MONETIZATION_VIEW_MODEL, () => monetizationViewModel);
+    // MONETIZATION_VIEW_MODEL: Factory - evita estado compartido entre comics distintos
+    serviceLocator.register(DIKeys.MONETIZATION_VIEW_MODEL, () => new MonetizationViewModel());
     // EDIT_WEBCOMIC_VIEW_MODEL: Factory (not singleton) - cada pantalla de edición obtiene su propia instancia
     serviceLocator.register(DIKeys.EDIT_WEBCOMIC_VIEW_MODEL, () => new EditWebcomicViewModel(getMangaDetail));
     serviceLocator.registerSingleton(DIKeys.ACCESS_CONFIG_VIEW_MODEL, () => accessConfigViewModel);

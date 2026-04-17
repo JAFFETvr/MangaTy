@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 export const PUBLIC_WEBCOMICS_STORAGE_KEY = '@mangaty_public_webcomics';
 export const getUsernameByUserIdStorageKey = (userId: string) => `@mangaty_username_${userId}`;
@@ -26,6 +27,7 @@ const normalizeWebcomicRecord = (record: LocalWebcomicRecord): LocalWebcomicReco
 });
 
 export const getUserWebcomicsStorageKey = (userId: string) => `@mangaty_${userId}_webcomics`;
+export const getUserMangaViewsStorageKey = (userId: string) => `@mangaty_${userId}_manga_views`;
 
 export const loadPublicWebcomics = async (): Promise<LocalWebcomicRecord[]> => {
   const raw = await AsyncStorage.getItem(PUBLIC_WEBCOMICS_STORAGE_KEY);
@@ -193,4 +195,52 @@ export const incrementPublicWebcomicViews = async (webcomicId: string): Promise<
   }
 
   return nextViews;
+};
+
+export const registerUniqueMangaView = async (mangaId: string): Promise<boolean> => {
+  const userId = (await TokenStorageService.getUserId()) || 'guest';
+  const storageKey = getUserMangaViewsStorageKey(userId);
+  const raw = await AsyncStorage.getItem(storageKey);
+  const current = raw ? JSON.parse(raw) : [];
+  const viewedIds = Array.isArray(current) ? current.map((id) => String(id)) : [];
+  const targetId = String(mangaId);
+
+  if (viewedIds.includes(targetId)) {
+    return false;
+  }
+
+  viewedIds.push(targetId);
+  await AsyncStorage.setItem(storageKey, JSON.stringify(Array.from(new Set(viewedIds))));
+  return true;
+};
+
+export const countUniqueReadersForManga = async (mangaId: string): Promise<number> => {
+  const targetId = String(mangaId);
+  const allKeys = await AsyncStorage.getAllKeys();
+  const viewsKeys = allKeys.filter(
+    (key) => key.startsWith('@mangaty_') && key.endsWith('_manga_views'),
+  );
+
+  if (viewsKeys.length === 0) {
+    return 0;
+  }
+
+  const entries = await AsyncStorage.multiGet(viewsKeys);
+  let uniqueReaders = 0;
+
+  for (const [, value] of entries) {
+    if (!value) continue;
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed)) continue;
+      const viewedIds = parsed.map((id) => String(id));
+      if (viewedIds.includes(targetId)) {
+        uniqueReaders += 1;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return uniqueReaders;
 };

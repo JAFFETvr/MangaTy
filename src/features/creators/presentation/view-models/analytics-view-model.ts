@@ -1,6 +1,8 @@
-import { StateFlow } from '@/src/shared/hooks';
-import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
+import { countUniqueReadersForManga } from '@/src/core/storage/local-webcomic-storage';
+import { FavoriteLocalDataSource } from '@/src/features/favorites/data/datasources/favorite-local-datasource';
 import { Manga } from '@/src/features/manga/domain/entities';
+import { GetMangaDetail } from '@/src/features/manga/domain/use-cases';
+import { StateFlow } from '@/src/shared/hooks';
 
 export interface AnalyticsState {
   manga: Manga | null;
@@ -42,6 +44,7 @@ const initialState: AnalyticsState = {
 export class AnalyticsViewModel {
   private stateSubject = new StateFlow<AnalyticsState>(initialState);
   state$ = this.stateSubject;
+  private favoriteLocalDataSource = new FavoriteLocalDataSource();
 
   constructor(private getMangaDetail: GetMangaDetail) {}
 
@@ -54,12 +57,22 @@ export class AnalyticsViewModel {
     
     try {
       const manga = await this.getMangaDetail.execute(slug, mangaId);
+      const uniqueReaders = await countUniqueReadersForManga(manga.id);
+      const localFavoriteCount = await this.favoriteLocalDataSource.countFavoritesForManga(manga.id);
+      const likesFromApi = Number(
+        (manga as any)?.likesCount ??
+          (manga as any)?.favoriteCount ??
+          (manga as any)?.favoritesCount ??
+          0,
+      );
+      const likes = Number.isFinite(likesFromApi)
+        ? Math.max(0, Math.max(localFavoriteCount, likesFromApi))
+        : Math.max(0, localFavoriteCount);
       
-      // En una app real, aquí llamaríamos a un endpoint de analíticas
-      // Para este prototipo, mezclamos datos reales del manga con mocks de rendimiento
       this.updateState({
         manga,
-        totalViews: manga.viewsCount || 0,
+        totalViews: uniqueReaders,
+        likes,
         isLoading: false,
       });
     } catch (error) {

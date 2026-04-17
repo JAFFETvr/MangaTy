@@ -1,4 +1,3 @@
-import { getPhotoStorageKey } from '@/app/settings';
 import { buildCoverUrl } from '@/src/core/api/api-config';
 import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
@@ -33,8 +32,6 @@ export default function ProfileScreen() {
   const [state, setState] = useState(viewModel.getState());
   const [historyState, setHistoryState] = useState(historyVM.getState());
   const [favoritesState, setFavoritesState] = useState(favoritesVM.getState());
-
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [hasCreatedWebcomics, setHasCreatedWebcomics] = useState(false);
 
   useEffect(() => {
@@ -71,23 +68,12 @@ export default function ProfileScreen() {
         }
       });
 
-      if (user?.email) {
-        AsyncStorage.getItem(getPhotoStorageKey(user.email)).then((saved) => {
-          if (saved?.startsWith('blob:')) {
-            void AsyncStorage.removeItem(getPhotoStorageKey(user.email));
-            setPhotoUri(null);
-            return;
-          }
-          setPhotoUri(saved || null);
-        });
-      } else {
-        setPhotoUri(null);
-      }
-    }, [user?.email, historyVM, favoritesVM, viewModel])
+    }, [historyVM, favoritesVM, viewModel])
   );
 
   // Muestra el nombre registrado; si aún no hay sesión guardada muestra un placeholder
   const displayName = user?.name && user.name !== 'Usuario' ? user.name : 'Mi Perfil';
+  const avatarUri = user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -96,8 +82,8 @@ export default function ProfileScreen() {
         {/* Header de Perfil */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={[styles.avatarCircle, { overflow: 'hidden' }]} />
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={[styles.avatarCircle, { overflow: 'hidden' }]} />
             ) : (
               <View style={styles.avatarCircle}>
                 <Feather name="user" size={48} color="#D8708E" />

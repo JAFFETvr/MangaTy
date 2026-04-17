@@ -10,6 +10,7 @@ export class UserRepositoryImpl implements IUserRepository {
     private dataSource: {
       getUser(): Promise<User | null>;
       updateUser(updates: Partial<User>): Promise<User>;
+      uploadAvatar(imageUri: string): Promise<string>;
       changePassword(currentPassword: string, newPassword: string): Promise<void>;
       getUserCoinBalance(): Promise<number>;
       addCoins(amount: number): Promise<number>;
@@ -24,6 +25,10 @@ export class UserRepositoryImpl implements IUserRepository {
 
   async updateUser(updates: Partial<User>): Promise<User> {
     return this.dataSource.updateUser(updates);
+  }
+
+  async uploadAvatar(imageUri: string): Promise<string> {
+    return this.dataSource.uploadAvatar(imageUri);
   }
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {

@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Switch,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccessConfigViewModel, AccessLevel, AgeRating } from '../view-models/access-config-view-model';
 
 interface Props {
@@ -28,11 +29,17 @@ export default function AccessConfigScreen({ mangaId }: Props) {
 
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
+    void viewModel.loadConfig(mangaId);
     return unsubscribe;
-  }, []);
+  }, [viewModel, mangaId]);
 
   useEffect(() => {
     if (state.success) {
+      if (Platform.OS === 'web') {
+        viewModel.resetStatus();
+        router.back();
+        return;
+      }
       Alert.alert('Éxito', 'Configuración guardada correctamente', [
         { text: 'OK', onPress: () => {
           viewModel.resetStatus();
@@ -41,6 +48,10 @@ export default function AccessConfigScreen({ mangaId }: Props) {
       ]);
     }
     if (state.error) {
+      if (Platform.OS === 'web') {
+        viewModel.resetStatus();
+        return;
+      }
       Alert.alert('Error', state.error);
       viewModel.resetStatus();
     }
@@ -66,7 +77,7 @@ export default function AccessConfigScreen({ mangaId }: Props) {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Configurar acceso</Text>
-          <Text style={styles.headerSubtitle}>holaa</Text>
+          <Text style={styles.headerSubtitle}>{state.mangaTitle || 'Mi webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -177,7 +188,7 @@ export default function AccessConfigScreen({ mangaId }: Props) {
         {/* Save Button */}
         <TouchableOpacity 
           style={[styles.saveButton, state.isSaving && styles.saveButtonDisabled]}
-          onPress={() => viewModel.saveConfig()}
+          onPress={() => viewModel.saveConfig(mangaId)}
           disabled={state.isSaving}
         >
           {state.isSaving ? (

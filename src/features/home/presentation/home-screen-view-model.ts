@@ -144,7 +144,7 @@ export class HomeScreenViewModel {
     return webcomics.map((w: any) => ({
       id: w.id,
       title: w.title,
-      slug: `local-${w.id}`,
+      slug: w.slug || `local-${w.id}`,
       synopsis: w.description || '',
       genre: Array.isArray(w.genres) ? w.genres.join(', ') : (w.genres || ''),
       mature: false,
@@ -152,19 +152,19 @@ export class HomeScreenViewModel {
       coverImagePath: w.coverImage || '',
       creatorName: w.creatorName || 'Creador',
       createdAt: w.createdAt || new Date().toISOString(),
-      chaptersData: [],
+      chaptersData: Array.isArray(w.chapters) ? w.chapters : [],
     }));
   }
 
   private mergeCatalogs(localComics: Manga[], apiComics: Manga[]): Manga[] {
     const merged = new Map<string, Manga>();
     for (const comic of localComics) {
-      merged.set(comic.id, comic);
+      merged.set(String(comic.id), comic);
     }
     for (const comic of apiComics) {
-      if (!merged.has(comic.id)) {
-        merged.set(comic.id, comic);
-      }
+      // Si existe duplicado (mismo id), priorizar el registro de API
+      // para usar slug/estado/capítulos publicados más confiables.
+      merged.set(String(comic.id), comic);
     }
     return Array.from(merged.values());
   }

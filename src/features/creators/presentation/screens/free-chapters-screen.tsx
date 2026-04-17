@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { DIKeys, serviceLocator } from '@/src/di/service-locator';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FreeChaptersViewModel } from '../view-models/free-chapters-view-model';
 
 interface Props {
@@ -64,7 +64,7 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Seleccionar capítulos gratis</Text>
-          <Text style={styles.headerSubtitle}>{state.manga?.title || 'holaa'}</Text>
+          <Text style={styles.headerSubtitle}>{state.manga?.title || 'Mi webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>

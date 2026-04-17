@@ -82,7 +82,7 @@ export function ExploreScreen() {
       const localComics: MangaItem[] = publicLocal.map((comic: any) => ({
         id: comic.id,
         title: comic.title,
-        slug: `local-${comic.id}`,
+        slug: comic.slug || `local-${comic.id}`,
         coverImagePath: comic.coverImage,
         genre: Array.isArray(comic.genres)
           ? comic.genres.join(', ')
@@ -93,11 +93,10 @@ export function ExploreScreen() {
 
       // Combinar mangas locales + API
       const comicsMap = new Map<string, MangaItem>();
-      for (const comic of localComics) comicsMap.set(comic.id, comic);
+      for (const comic of localComics) comicsMap.set(String(comic.id), comic);
       for (const comic of apiComics) {
-        if (!comicsMap.has(comic.id)) {
-          comicsMap.set(comic.id, comic);
-        }
+        // Si hay duplicado por id, priorizar API para mantener slug/capítulos correctos
+        comicsMap.set(String(comic.id), comic);
       }
       const combinedComics = Array.from(comicsMap.values());
       setAllComics(combinedComics);

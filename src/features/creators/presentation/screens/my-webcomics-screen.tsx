@@ -1,5 +1,7 @@
+import { buildCoverUrl } from '@/src/core/api/api-config';
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -11,7 +13,6 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TokenStorageService } from '@/src/core/http/token-storage-service';
 
 const GENRE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Drama': { bg: '#F3E5F5', text: '#8E24AA', border: '#E1BEE7' },
@@ -40,18 +41,28 @@ export default function MyWebcomicsScreen() {
     useCallback(() => {
       const loadWebcomics = async () => {
         try {
-          const userId = await TokenStorageService.getUserId();
-          if (!userId) {
+          const token = await TokenStorageService.getToken();
+          if (!token) {
             setWebcomics([]);
             return;
           }
-          const storageKey = `@mangaty_${userId}_webcomics`;
-          const val = await AsyncStorage.getItem(storageKey);
-          if (val) {
-            setWebcomics(JSON.parse(val));
-          } else {
-            setWebcomics([]);
-          }
+          httpClient.setToken(token);
+
+          const response = await httpClient.get<any>('/comics/me?page=0&size=100&sort=createdAt,desc');
+          const list: any[] = Array.isArray(response)
+            ? response
+            : (response.content ?? response.data ?? []);
+
+          setWebcomics(
+            list.map((item: any) => ({
+              id: item.id,
+              slug: item.slug,
+              title: item.title,
+              description: item.synopsis ?? '',
+              genres: item.genre ? [item.genre] : [],
+              coverImage: item.coverImagePath ? buildCoverUrl(item.coverImagePath) : '',
+            })),
+          );
         } catch (error) {
           console.error('❌ Error loading webcomics:', error);
           setWebcomics([]);
@@ -93,7 +104,7 @@ export default function MyWebcomicsScreen() {
             activeOpacity={0.8}
             onPress={() => router.push({
               pathname: '/manage-webcomic/[id]',
-              params: { id: item.id, slug: item.slug || `manga-${item.id}` }
+              params: { id: item.id, slug: item.slug || item.id }
             })}
           >
             

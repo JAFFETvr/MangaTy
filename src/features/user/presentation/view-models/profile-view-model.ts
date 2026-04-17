@@ -4,7 +4,7 @@
 
 import { StateFlow } from '@/src/shared/hooks';
 import { User } from '../../domain/entities';
-import { ChangePassword, GetUser, Logout, UpdateUser } from '../../domain/use-cases';
+import { ChangePassword, GetUser, Logout, UpdateUser, UploadAvatar } from '../../domain/use-cases';
 
 export interface ProfileViewModelState {
   user: User | null;
@@ -28,7 +28,8 @@ export class ProfileViewModel {
     private getUser: GetUser,
     private updateUser: UpdateUser,
     private logout: Logout,
-    private changePasswordUseCase: ChangePassword
+    private changePasswordUseCase: ChangePassword,
+    private uploadAvatarUseCase: UploadAvatar
   ) {}
 
   getState(): ProfileViewModelState {
@@ -92,6 +93,25 @@ export class ProfileViewModel {
         error: error instanceof Error ? error.message : 'No se pudo cambiar la contraseña',
       });
       throw error instanceof Error ? error : new Error('No se pudo cambiar la contraseña');
+    }
+  }
+
+  async updateProfilePhoto(imageUri: string): Promise<string> {
+    this.updateState({ isSaving: true, error: null });
+    try {
+      const avatarUrl = await this.uploadAvatarUseCase.execute(imageUri);
+      const current = this.getState().user;
+      this.updateState({
+        isSaving: false,
+        user: current ? { ...current, avatarUrl } : current,
+      });
+      return avatarUrl;
+    } catch (error) {
+      this.updateState({
+        isSaving: false,
+        error: error instanceof Error ? error.message : 'No se pudo subir la foto de perfil',
+      });
+      throw error instanceof Error ? error : new Error('No se pudo subir la foto de perfil');
     }
   }
 

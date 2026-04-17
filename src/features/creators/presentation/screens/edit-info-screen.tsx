@@ -24,6 +24,26 @@ interface Props {
   mangaId: string;
 }
 
+const resolveImageUri = (value: string | null | undefined): string => {
+  if (!value) return '';
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('file://') ||
+    value.startsWith('data:') ||
+    value.startsWith('blob:')
+  ) {
+    return value;
+  }
+  return buildCoverUrl(value);
+};
+
+const blurActiveElementOnWeb = () => {
+  if (Platform.OS !== 'web') return;
+  const active = (globalThis as any)?.document?.activeElement as { blur?: () => void } | null;
+  active?.blur?.();
+};
+
 export default function EditInfoScreen({ slug, mangaId }: Props) {
   const insets = useSafeAreaInsets();
   const [viewModel] = useState<EditWebcomicViewModel>(() =>
@@ -44,6 +64,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
     if (state.success) {
       if (Platform.OS === 'web') {
         viewModel.resetStatus();
+        blurActiveElementOnWeb();
         router.back();
         return;
       }
@@ -64,11 +85,6 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
       viewModel.resetStatus();
     }
   }, [state.success, state.error]);
-
-  useEffect(() => {
-    console.log('🎬 [EditInfoScreen] Montado - slug:', slug, 'mangaId:', mangaId);
-    return () => console.log('🎬 [EditInfoScreen] Desmontado');
-  }, []);
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -95,12 +111,18 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            blurActiveElementOnWeb();
+            router.back();
+          }}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color="#1A1A2E" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Editar información</Text>
-          <Text style={styles.headerSubtitle}>{state.manga?.title || 'holaa'}</Text>
+          <Text style={styles.headerSubtitle}>{state.manga?.title || 'Webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -112,7 +134,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
         <TouchableOpacity style={styles.uploadArea} onPress={pickImage}>
           {state.form.bannerImage ? (
             <Image 
-              source={{ uri: buildCoverUrl(state.form.bannerImage) }} 
+              source={{ uri: resolveImageUri(state.form.bannerImage) }} 
               style={styles.coverPreview} 
             />
           ) : (
@@ -130,7 +152,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
           style={styles.input}
           value={state.form.title}
           onChangeText={(txt) => viewModel.setTitle(txt)}
-          placeholder="holaa"
+          placeholder="Título del webcomic"
         />
         <Text style={styles.charCount}>{state.form.title.length}/100 caracteres</Text>
 
@@ -185,7 +207,10 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
         <View style={styles.actions}>
           <TouchableOpacity 
             style={styles.cancelButton}
-            onPress={() => router.back()}
+            onPress={() => {
+              blurActiveElementOnWeb();
+              router.back();
+            }}
           >
             <Text style={styles.cancelText}>Cancelar</Text>
           </TouchableOpacity>

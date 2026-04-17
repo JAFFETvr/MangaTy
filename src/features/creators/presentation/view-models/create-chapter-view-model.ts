@@ -1,11 +1,7 @@
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
-import {
-  getUserWebcomicsStorageKey,
-  upsertPublicWebcomic,
-} from '@/src/core/storage/local-webcomic-storage';
-import { persistImageUri } from '@/src/core/utils/persist-image-uri';
+import { httpClient } from '@/src/core/http/http-client';
 import { StateFlow } from '@/src/shared/hooks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 export interface CreateChapterState {
   title: string;
@@ -56,68 +52,47 @@ export class CreateChapterViewModel {
     this.updateState({ isLoading: true, error: null });
 
     try {
-      console.log('📝 Publicando capítulo para mangaId:', mangaId);
-
-      const userId = await TokenStorageService.getUserId();
-      if (!userId) {
-        throw new Error('No se pudo obtener el usuario');
+      const token = await TokenStorageService.getToken();
+      if (!token) {
+        throw new Error('Tu sesión expiró. Inicia sesión nuevamente.');
       }
+      httpClient.setToken(token);
 
-      // Convertir imágenes a base64 para persistencia
-      const persistedImages: string[] = [];
-      for (const imageUri of images) {
-        try {
-          const persistedImage = await persistImageUri(imageUri);
-          if (persistedImage) {
-            persistedImages.push(persistedImage);
-          }
-        } catch (error) {
-          console.error('Error converting image:', error);
-          // Si falla la conversión, usar el URI original
-          persistedImages.push(imageUri);
-        }
-      }
+      const existingChapters = await httpClient.get<any[]>(`/comics/${mangaId}/chapters`);
+      const maxChapterNumber = (existingChapters || []).reduce(
+        (max, chapter) => Math.max(max, Number(chapter.chapterNumber) || 0),
+        0,
+      );
+      const nextChapterNumber = maxChapterNumber + 1;
 
-      // Obtener webcomics del cache local con clave del usuario
-      const storageKey = getUserWebcomicsStorageKey(userId);
-      const storedStr = await AsyncStorage.getItem(storageKey);
-      if (!storedStr) {
-        throw new Error('Comic no encontrado - almacenamiento vacío');
-      }
-
-      const webcomics = JSON.parse(storedStr);
-      console.log('📚 Comics encontrados:', webcomics.length);
-
-      const comicIndex = webcomics.findIndex((w: any) => w.id === mangaId);
-      console.log('🔍 Comic encontrado en índice:', comicIndex);
-
-      if (comicIndex === -1) {
-        throw new Error(`Comic no encontrado - ID buscado: ${mangaId}`);
-      }
-
-      // Crear nuevo capítulo CON IMÁGENES PERSISTIDAS
-      const newChapter = {
-        id: `chapter-${Date.now()}`,
-        chapterNumber: (webcomics[comicIndex].chapters?.length || 0) + 1,
-        title: title,
+      const createdChapter = await httpClient.post<any>(`/comics/${mangaId}/chapters`, {
+        chapterNumber: nextChapterNumber,
+        title: title.trim(),
         premium: false,
         priceTyCoins: 0,
-        publishedAt: new Date().toISOString(),
-        pages: persistedImages, // Usar imágenes en base64
-      };
+      });
 
-      console.log('✍️ Nuevo capítulo creado con', persistedImages.length, 'páginas');
+      for (let index = 0; index < images.length; index++) {
+        const imageUri = images[index];
+        const formData = new FormData();
 
-      // Agregar capítulo al comic
-      if (!webcomics[comicIndex].chapters) {
-        webcomics[comicIndex].chapters = [];
+        if (Platform.OS === 'web') {
+          const imageResponse = await fetch(imageUri);
+          const blob = await imageResponse.blob();
+          formData.append('file', blob, `page_${index + 1}.jpg`);
+        } else {
+          formData.append('file', {
+            uri: imageUri,
+            name: `page_${index + 1}.jpg`,
+            type: 'image/jpeg',
+          } as any);
+        }
+
+        formData.append('pageNumber', String(index + 1));
+        await httpClient.postFormData(`/comics/${mangaId}/chapters/${createdChapter.id}/pages`, formData);
       }
-      webcomics[comicIndex].chapters.push(newChapter);
 
-      // Guardar cambios con la clave del usuario
-      await AsyncStorage.setItem(storageKey, JSON.stringify(webcomics));
-      await upsertPublicWebcomic(userId, webcomics[comicIndex]);
-      console.log('💾 Capítulo guardado en AsyncStorage');
+      await httpClient.patch(`/comics/${mangaId}/chapters/${createdChapter.id}/publish`);
 
       this.updateState({ isLoading: false, success: true });
     } catch (error) {

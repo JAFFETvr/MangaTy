@@ -1,6 +1,12 @@
 import { buildCoverUrl } from '@/src/core/api/api-config';
 import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { loadPublicWebcomics } from '@/src/core/storage/local-webcomic-storage';
+import {
+  getMangaRestrictionMessageWithAdultPreference,
+  loadAdultContentPreference,
+  loadMangaAccessConfig,
+} from '@/src/core/storage/manga-access-storage';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -37,6 +43,22 @@ const extractPages = (chapter: any): string[] => {
   return rawPages.filter((p) => typeof p === 'string').map(mapPage);
 };
 
+const extractRemotePageUrls = (payload: any): string[] => {
+  const rawPages = Array.isArray(payload)
+    ? payload
+    : (payload?.content ?? payload?.data ?? payload?.pages ?? []);
+
+  if (!Array.isArray(rawPages)) return [];
+
+  return rawPages
+    .map((page: any) => {
+      if (typeof page === 'string') return mapPage(page);
+      const path = page?.imagePath ?? page?.url ?? page?.imageUrl ?? page?.path;
+      return typeof path === 'string' ? mapPage(path) : null;
+    })
+    .filter((page: string | null): page is string => Boolean(page));
+};
+
 export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -50,6 +72,20 @@ export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
       setError(null);
 
       try {
+        const [role, config] = await Promise.all([
+          TokenStorageService.getRole(),
+          loadMangaAccessConfig(mangaId),
+        ]);
+        const allowsAdultContent = await loadAdultContentPreference();
+        const restrictionMessage = getMangaRestrictionMessageWithAdultPreference(
+          config,
+          role,
+          allowsAdultContent,
+        );
+        if (restrictionMessage) {
+          throw new Error(restrictionMessage);
+        }
+
         // 1) Capítulo local (creadores)
         const localComics = await loadPublicWebcomics();
         const localComic = localComics.find((comic: any) => String(comic.id) === String(mangaId));
@@ -67,40 +103,22 @@ export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
           }
         }
 
-        // 2) Capítulo remoto (API)
-        const chapterEndpoints = [
-          `/comics/${mangaId}/chapters/${chapterId}`,
-          `/chapters/${chapterId}`,
-          `/comics/chapters/${chapterId}`,
-        ];
+        // 2) Capítulo remoto (API documentada)
+        const listResponse = await httpClient.get<any>(`/comics/${mangaId}/chapters`);
+        const chapterList = Array.isArray(listResponse)
+          ? listResponse
+          : (listResponse?.content ?? listResponse?.data ?? listResponse?.chapters ?? []);
+        const remoteChapter = chapterList.find((ch: any) => String(ch.id) === String(chapterId));
 
-        let remoteChapter: any = null;
-        for (const endpoint of chapterEndpoints) {
-          try {
-            const response = await httpClient.get<any>(endpoint);
-            remoteChapter = response?.data ?? response;
-            if (remoteChapter) break;
-          } catch {
-            // Intentar siguiente endpoint
-          }
-        }
-
-        if (!remoteChapter) {
-          const listResponse = await httpClient.get<any>(`/comics/${mangaId}/chapters`);
-          const list = Array.isArray(listResponse)
-            ? listResponse
-            : (listResponse?.content ?? listResponse?.data ?? listResponse?.chapters ?? []);
-          remoteChapter = list.find((ch: any) => String(ch.id) === String(chapterId));
-        }
-
-        const remotePages = extractPages(remoteChapter);
-        if (!remoteChapter || remotePages.length === 0) {
+        const pagesResponse = await httpClient.get<any>(`/comics/${mangaId}/chapters/${chapterId}/pages`);
+        const remotePages = extractRemotePageUrls(pagesResponse);
+        if (remotePages.length === 0) {
           throw new Error('Este capítulo no tiene páginas disponibles');
         }
 
         setState({
-          title: remoteChapter.title || 'Capítulo',
-          chapterNumber: remoteChapter.chapterNumber || 1,
+          title: remoteChapter?.title || 'Capítulo',
+          chapterNumber: remoteChapter?.chapterNumber || 1,
           pages: remotePages,
         });
       } catch (e: any) {
