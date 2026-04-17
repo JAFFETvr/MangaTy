@@ -15,6 +15,7 @@ import {
   getUsernameByUserIdStorageKey,
   getUserWebcomicsStorageKey,
   loadPublicWebcomics,
+  registerUniqueMangaView,
 } from '@/src/core/storage/local-webcomic-storage';
 
 export class MangaRemoteDataSource {
@@ -45,6 +46,21 @@ export class MangaRemoteDataSource {
     return res.json();
   }
 
+  private async fetchComicWithoutIncrement(mangaId: string, slug: string): Promise<any | null> {
+    try {
+      const json = await this.fetchPublicJson(`${API_BASE}/comics?page=0&size=100`);
+      const list: any[] = Array.isArray(json)
+        ? json
+        : (json.content ?? json.data ?? json.comics ?? []);
+      const targetById = list.find((item) => String(item?.id) === String(mangaId));
+      if (targetById) return targetById;
+      const targetBySlug = list.find((item) => String(item?.slug) === String(slug));
+      return targetBySlug ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Carga el detalle de un comic y sus capítulos en paralelo.
    * @param slug  – campo `slug` del listado (GET /api/comics/{slug})
@@ -63,13 +79,27 @@ export class MangaRemoteDataSource {
     const comicIdentifier = safeSlug || mangaId;
 
     try {
-      const comicRes = await fetch(`${API_BASE}/comics/${comicIdentifier}`);
-      if (!comicRes.ok) {
-        throw new Error('API comic detail error - trying fallback');
+      const isFirstViewForUser = await registerUniqueMangaView(mangaId);
+      let comic: any = null;
+
+      if (isFirstViewForUser) {
+        const comicRes = await fetch(`${API_BASE}/comics/${comicIdentifier}`);
+        if (!comicRes.ok) {
+          throw new Error('API comic detail error - trying fallback');
+        }
+        const comicJson = await comicRes.json();
+        comic = comicJson.data ?? comicJson;
+      } else {
+        comic = await this.fetchComicWithoutIncrement(mangaId, safeSlug);
+        if (!comic) {
+          const fallbackRes = await fetch(`${API_BASE}/comics/${comicIdentifier}`);
+          if (!fallbackRes.ok) {
+            throw new Error('API comic detail error - trying fallback');
+          }
+          const fallbackJson = await fallbackRes.json();
+          comic = fallbackJson.data ?? fallbackJson;
+        }
       }
-      const comicJson = await comicRes.json();
-      // La API puede devolver el objeto directamente o dentro de { data: ... }
-      const comic = comicJson.data ?? comicJson;
 
       let rawChapters: any[] = [];
       try {

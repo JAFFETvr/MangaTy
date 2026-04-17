@@ -95,6 +95,7 @@ export default function SettingsScreen() {
   };
 
   const executeLogout = async () => {
+    let logoutError: unknown = null;
     try {
       await viewModel.performLogout();
       await TokenStorageService.clearAuth();
@@ -105,13 +106,19 @@ export default function SettingsScreen() {
         STORAGE_KEY_USERNAME,
         LOCAL_PROFILE_PHOTO_KEY,
       ]);
-      if (Platform.OS === 'web') {
-        globalThis.location?.replace(`${globalThis.location.origin}/login`);
-      } else {
-        router.replace('/(auth)/login');
-      }
     } catch (error) {
+      logoutError = error;
       console.error('❌ Error en logout:', error);
+    }
+
+    if (Platform.OS === 'web') {
+      globalThis.location?.replace(`${globalThis.location.origin}/login`);
+    } else {
+      // Pasar por index garantiza reset al flujo de auth en Expo Router
+      router.replace('/');
+    }
+
+    if (logoutError && Platform.OS !== 'web') {
       Alert.alert('Error', 'No se pudo cerrar sesión correctamente');
     }
   };
