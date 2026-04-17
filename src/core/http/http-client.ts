@@ -97,6 +97,26 @@ export class HttpClient {
   }
 
   /**
+   * PUT request
+   */
+  async put<T>(endpoint: string, body: any): Promise<T> {
+    const url = `${API_BASE}${endpoint}`;
+    const headers = this.getHeaders();
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * DELETE request
    */
   async delete<T>(endpoint: string): Promise<T> {

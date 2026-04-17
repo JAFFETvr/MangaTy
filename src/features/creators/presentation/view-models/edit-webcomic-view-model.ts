@@ -1,4 +1,5 @@
 import { TokenStorageService } from '@/src/core/http/token-storage-service';
+import { httpClient } from '@/src/core/http/http-client';
 import {
   getUserWebcomicsStorageKey,
   LocalWebcomicRecord,
@@ -137,6 +138,13 @@ export class EditWebcomicViewModel {
       if (selectedGenres.length === 0) {
         throw new Error('Debes seleccionar al menos un género');
       }
+
+      await httpClient.put(`/comics/${mangaId}`, {
+        title,
+        synopsis: description,
+        genre: selectedGenres.join(', '),
+        mature: state.manga?.mature ?? false,
+      });
 
       const storageKey = getUserWebcomicsStorageKey(userId);
       const storedStr = await AsyncStorage.getItem(storageKey);
