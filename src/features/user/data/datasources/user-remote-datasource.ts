@@ -31,14 +31,17 @@ interface UserProfileResponse {
 
 export class UserRemoteDataSource {
   private readonly profileEndpoints = ['/users/me', '/user/me', '/auth/me', '/auth/profile', '/profile'];
-  private readonly avatarUploadEndpoint = '/users/avatar';
+  private readonly avatarUploadEndpoint = '/users/me/avatar';
 
   private resolveAvatarUrl(value?: string | null): string | null {
     if (!value) return null;
     if (value.startsWith('http') || value.startsWith('data:') || value.startsWith('file://') || value.startsWith('blob:')) {
       return value;
     }
-    return `${UPLOADS_BASE}${value}`;
+    const normalizedPath = value
+      .replace(/^\/+/, '')
+      .replace(/^uploads\/+/i, '');
+    return `${UPLOADS_BASE}${normalizedPath}`;
   }
 
   private async getRemoteProfile(): Promise<UserProfileResponse | null> {
@@ -56,47 +59,60 @@ export class UserRemoteDataSource {
   }
 
   async uploadAvatar(imageUri: string): Promise<string> {
-    const buildFormData = async (): Promise<FormData> => {
+    const token = await TokenStorageService.getToken();
+    if (token) {
+      httpClient.setToken(token);
+    }
+
+    const extractAvatarRaw = (response: any): string | undefined =>
+      response?.avatarUrl ||
+      response?.avatar_url ||
+      response?.avatarPath ||
+      response?.avatar_path ||
+      response?.avatar ||
+      response?.url;
+
+    const buildFormData = async (fieldName: 'file' | 'avatar'): Promise<FormData> => {
       const formData = new FormData();
       if (Platform.OS === 'web') {
         const response = await fetch(imageUri);
         const blob = await response.blob();
-        formData.append('file', blob, 'avatar.jpg');
-        // Compatibilidad con backends que esperan "avatar" en lugar de "file"
-        formData.append('avatar', blob, 'avatar.jpg');
+        formData.append(fieldName, blob, 'avatar.jpg');
       } else {
         const filePayload = {
           uri: imageUri,
           name: 'avatar.jpg',
           type: 'image/jpeg',
         } as any;
-        formData.append('file', filePayload);
-        formData.append('avatar', filePayload);
+        formData.append(fieldName, filePayload);
       }
       return formData;
     };
 
     try {
-      const formData = await buildFormData();
-      const response = await httpClient.postFormData<any>(this.avatarUploadEndpoint, formData);
-      const avatarRaw =
-        response?.avatarUrl ||
-        response?.avatar_url ||
-        response?.avatarPath ||
-        response?.avatar_path ||
-        response?.avatar ||
-        response?.url;
-      const avatarUrl = this.resolveAvatarUrl(avatarRaw);
-      if (avatarUrl) {
-        return avatarUrl;
+      let uploadResponse: any = null;
+      try {
+        const formData = await buildFormData('file');
+        uploadResponse = await httpClient.postFormData<any>(this.avatarUploadEndpoint, formData);
+      } catch {
+        const fallbackFormData = await buildFormData('avatar');
+        uploadResponse = await httpClient.postFormData<any>(this.avatarUploadEndpoint, fallbackFormData);
       }
-      throw new Error('El backend no devolvió la URL del avatar');
+
+      const avatarFromUpload = this.resolveAvatarUrl(extractAvatarRaw(uploadResponse));
+      if (avatarFromUpload) return avatarFromUpload;
+
+      // Algunos backends devuelven 200/204 sin body; recargar perfil para obtener avatar actualizado.
+      const refreshedProfile = await this.getRemoteProfile();
+      const avatarFromProfile = this.resolveAvatarUrl(extractAvatarRaw(refreshedProfile));
+      if (avatarFromProfile) return avatarFromProfile;
+
+      throw new Error('La subida se realizó, pero no se pudo leer el avatar actualizado desde el perfil');
     } catch (error) {
       const backendMessage =
         error instanceof Error ? error.message : 'No se pudo subir la foto de perfil al backend';
       throw new Error(
-        `Error al subir avatar en ${this.avatarUploadEndpoint}. ${backendMessage}. ` +
-        'El backend debe exponer un endpoint de avatar funcional para completar esta acción.'
+        `Error al subir avatar en ${this.avatarUploadEndpoint}. ${backendMessage}.`
       );
     }
   }

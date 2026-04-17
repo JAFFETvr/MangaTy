@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -26,6 +27,14 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
   );
   const [state, setState] = useState(viewModel.getState());
 
+  const goBackSafely = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(`/manage-webcomic/${mangaId}/access`);
+  };
+
   useEffect(() => {
     const unsubscribe = viewModel.state$.subscribe(setState);
     viewModel.loadChapters(slug, mangaId);
@@ -34,14 +43,27 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
 
   useEffect(() => {
     if (state.success) {
+      if (Platform.OS === 'web') {
+        viewModel.resetStatus();
+        goBackSafely();
+        return;
+      }
       Alert.alert('Éxito', 'Configuración guardada correctamente', [
         { text: 'OK', onPress: () => {
           viewModel.resetStatus();
-          router.back();
+          goBackSafely();
         }}
       ]);
     }
-  }, [state.success]);
+    if (state.error) {
+      if (Platform.OS === 'web') {
+        viewModel.resetStatus();
+        return;
+      }
+      Alert.alert('Error', state.error);
+      viewModel.resetStatus();
+    }
+  }, [state.success, state.error]);
 
   if (state.isLoading && !state.manga) {
     return (
@@ -52,18 +74,18 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
   }
 
   const chapters = state.manga?.chaptersData || [];
-  const freeCount = state.freeChapterIds.length;
-  const paidCount = Math.max(0, chapters.length - freeCount);
+  const paidCount = state.paidChapterIds.length;
+  const freeCount = Math.max(0, chapters.length - paidCount);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={goBackSafely} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color="#1A1A2E" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Seleccionar capítulos gratis</Text>
+          <Text style={styles.headerTitle}>Seleccionar capítulos de pago</Text>
           <Text style={styles.headerSubtitle}>{state.manga?.title || 'Mi webcomic'}</Text>
         </View>
         <View style={{ width: 40 }} />
@@ -79,7 +101,7 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>Configuración de capítulos</Text>
             <Text style={styles.infoDesc}>
-              Por defecto todos los capítulos son de pago. Selecciona los capítulos que quieras que sean gratuitos con anuncios. Puedes seleccionar todos los que quieras.
+              Por defecto todos los capítulos son gratuitos con anuncios. Selecciona los capítulos que quieras convertir en de pago con monedas.
             </Text>
           </View>
         </View>
@@ -87,51 +109,51 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
         {/* Summary Cards */}
         <View style={styles.summaryRow}>
            <View style={styles.summaryCard}>
-              <View style={styles.summaryLabelRow}>
-                 <View style={[styles.dot, { backgroundColor: '#27AE60' }]} />
-                 <Text style={styles.summaryLabel}>Capítulos gratis</Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: '#27AE60' }]}>{freeCount}</Text>
-           </View>
-           <View style={styles.summaryCard}>
-              <View style={styles.summaryLabelRow}>
-                 <View style={[styles.dot, { backgroundColor: '#E2919E' }]} />
-                 <Text style={styles.summaryLabel}>Capítulos de pago</Text>
-              </View>
-              <Text style={[styles.summaryValue, { color: '#E2919E' }]}>{paidCount}</Text>
-           </View>
-        </View>
+               <View style={styles.summaryLabelRow}>
+                  <View style={[styles.dot, { backgroundColor: '#E2919E' }]} />
+                  <Text style={styles.summaryLabel}>Capítulos de pago</Text>
+                </View>
+               <Text style={[styles.summaryValue, { color: '#E2919E' }]}>{paidCount}</Text>
+            </View>
+            <View style={styles.summaryCard}>
+               <View style={styles.summaryLabelRow}>
+                  <View style={[styles.dot, { backgroundColor: '#27AE60' }]} />
+                  <Text style={styles.summaryLabel}>Capítulos gratuitos</Text>
+               </View>
+               <Text style={[styles.summaryValue, { color: '#27AE60' }]}>{freeCount}</Text>
+            </View>
+         </View>
 
         {/* Chapters List */}
         <View style={styles.chapterList}>
           {chapters.length === 0 ? (
             <View style={styles.emptyState}>
               <Feather name="alert-triangle" size={48} color="#FF9800" style={{ marginBottom: 16 }} />
-              <Text style={styles.emptyTitle}>No hay capítulos aún</Text>
-              <Text style={styles.emptyDesc}>Debes publicar al menos un capítulo antes de configurar los accesos gratuitos.</Text>
-            </View>
-          ) : (
-            chapters.map((ch) => {
-              const isFree = state.freeChapterIds.includes(ch.id);
+               <Text style={styles.emptyTitle}>No hay capítulos aún</Text>
+               <Text style={styles.emptyDesc}>Debes publicar al menos un capítulo para configurar cuáles serán de pago con monedas.</Text>
+             </View>
+           ) : (
+             chapters.map((ch) => {
+              const isPaid = state.paidChapterIds.includes(ch.id);
               return (
                 <TouchableOpacity 
                   key={ch.id} 
-                  style={[styles.chapterItem, isFree && styles.chapterItemFree]}
+                  style={[styles.chapterItem, isPaid && styles.chapterItemFree]}
                   onPress={() => viewModel.toggleChapter(ch.id)}
                 >
                   <View style={styles.chapterText}>
                     <View style={styles.titleRow}>
                       <Text style={styles.chapterTitle}>Capítulo {ch.chapterNumber}</Text>
-                      {isFree && (
+                      {isPaid && (
                         <View style={styles.freeBadge}>
-                           <Text style={styles.freeBadgeText}>Gratis con anuncios</Text>
+                           <Text style={styles.freeBadgeText}>De pago con monedas</Text>
                         </View>
                       )}
                     </View>
                     <Text style={styles.chapterSubtitle}>{ch.title}</Text>
                   </View>
-                  <View style={[styles.checkbox, isFree && styles.checkboxSelected]}>
-                    {isFree && <Feather name="check" size={16} color="#FFF" />}
+                  <View style={[styles.checkbox, isPaid && styles.checkboxSelected]}>
+                    {isPaid && <Feather name="check" size={16} color="#FFF" />}
                   </View>
                 </TouchableOpacity>
               );
@@ -143,7 +165,7 @@ export default function FreeChaptersScreen({ slug, mangaId }: Props) {
         {chapters.length > 0 && (
           <TouchableOpacity 
             style={[styles.saveButton, state.isSaving && styles.saveButtonDisabled]}
-            onPress={() => viewModel.saveConfig()}
+            onPress={() => viewModel.saveConfig(mangaId)}
             disabled={state.isSaving}
           >
             {state.isSaving ? (

@@ -129,8 +129,8 @@ export default function AccessConfigScreen({ mangaId }: Props) {
         </View>
 
         {/* Free Chapters Link */}
-        <Text style={[styles.sectionLabel, { marginTop: 32 }]}>Capítulos gratis</Text>
-        <Text style={styles.sectionTip}>Selecciona los capítulos que serán gratuitos con anuncios</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 32 }]}>Capítulos de pago</Text>
+        <Text style={styles.sectionTip}>Selecciona los capítulos que se desbloquean con monedas</Text>
         
         <TouchableOpacity 
           style={styles.settingsLink}
@@ -140,8 +140,8 @@ export default function AccessConfigScreen({ mangaId }: Props) {
             <Feather name="book-open" size={18} color="#D8708E" />
           </View>
           <View style={styles.settingsLinkText}>
-            <Text style={styles.settingsLinkLabel}>Configurar capítulos gratuitos</Text>
-            <Text style={styles.settingsLinkDesc}>Toca para seleccionar capítulos</Text>
+            <Text style={styles.settingsLinkLabel}>Configurar capítulos de pago</Text>
+            <Text style={styles.settingsLinkDesc}>Toca para marcar capítulos con monedas</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#999" />
         </TouchableOpacity>

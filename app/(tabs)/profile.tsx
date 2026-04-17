@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const LOCAL_PROFILE_PHOTO_KEY = '@mangaty_profile_photo_local';
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [viewModel] = useState<ProfileViewModel>(() =>
@@ -32,7 +34,7 @@ export default function ProfileScreen() {
   const [state, setState] = useState(viewModel.getState());
   const [historyState, setHistoryState] = useState(historyVM.getState());
   const [favoritesState, setFavoritesState] = useState(favoritesVM.getState());
-  const [hasCreatedWebcomics, setHasCreatedWebcomics] = useState(false);
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubProfile = viewModel.state$.subscribe(setState);
@@ -58,22 +60,13 @@ export default function ProfileScreen() {
       void historyVM.loadHistory();
       void favoritesVM.loadFavorites();
       void viewModel.loadUser();
-
-      AsyncStorage.getItem('@mock_created_webcomics').then((val) => {
-        if (val) {
-          const list = JSON.parse(val);
-          setHasCreatedWebcomics(list.length > 0);
-        } else {
-          setHasCreatedWebcomics(false);
-        }
-      });
-
+      void AsyncStorage.getItem(LOCAL_PROFILE_PHOTO_KEY).then(setLocalPhotoUri);
     }, [historyVM, favoritesVM, viewModel])
   );
 
   // Muestra el nombre registrado; si aún no hay sesión guardada muestra un placeholder
   const displayName = user?.name && user.name !== 'Usuario' ? user.name : 'Mi Perfil';
-  const avatarUri = user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null;
+  const avatarUri = localPhotoUri || (user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -119,30 +112,17 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Card Crear / Ver Webcomic (Dependiendo de si ya tiene cómics creados) */}
-        {hasCreatedWebcomics ? ( // TODO: Conectar con el estado real del usuario (ej: user?.createdWebcomics?.length > 0)
-          <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85} onPress={() => router.push('/my-webcomics')}>
-            <View style={[styles.creatorIconWrapper, { backgroundColor: '#D8708E', borderColor: '#D8708E' }]}>
-              <Feather name="star" size={20} color="#FFF" />
-            </View>
-            <View style={styles.creatorText}>
-              <Text style={styles.creatorTitle}>Ver tus Webcomics</Text>
-              <Text style={styles.creatorSubtitle}>Administra tu contenido y estadísticas</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#999" />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85} onPress={() => router.push('/create-webcomic')}>
-            <View style={styles.creatorIconWrapper}>
-              <Feather name="star" size={22} color="#D8708E" />
-            </View>
-            <View style={styles.creatorText}>
-              <Text style={styles.creatorTitle}>Crear Webcomic</Text>
-              <Text style={styles.creatorSubtitle}>Comparte tus historias y gana dinero</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#999" />
-          </TouchableOpacity>
-        )}
+        {/* Card de acceso al panel de creador */}
+        <TouchableOpacity style={styles.creatorCard} activeOpacity={0.85} onPress={() => router.push('/my-webcomics')}>
+          <View style={[styles.creatorIconWrapper, { backgroundColor: '#D8708E', borderColor: '#D8708E' }]}>
+            <Feather name="star" size={20} color="#FFF" />
+          </View>
+          <View style={styles.creatorText}>
+            <Text style={styles.creatorTitle}>Ver mis Webcomics</Text>
+            <Text style={styles.creatorSubtitle}>Administra tu contenido y estadísticas</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#999" />
+        </TouchableOpacity>
 
         {/* Historial de lectura */}
         <View style={styles.sectionHeader}>

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Props {
   mangaId: string;
   chapterId: string;
+  isPremium?: boolean;
 }
 
 interface ReaderState {
@@ -59,7 +60,7 @@ const extractRemotePageUrls = (payload: any): string[] => {
     .filter((page: string | null): page is string => Boolean(page));
 };
 
-export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
+export default function ChapterReaderScreen({ mangaId, chapterId, isPremium = false }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +73,10 @@ export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
       setError(null);
 
       try {
+        if (isPremium) {
+          throw new Error('Este capítulo es de pago. Debes desbloquearlo con monedas para leerlo.');
+        }
+
         const [role, config] = await Promise.all([
           TokenStorageService.getRole(),
           loadMangaAccessConfig(mangaId),
@@ -135,7 +140,7 @@ export default function ChapterReaderScreen({ mangaId, chapterId }: Props) {
     }
 
     void load();
-  }, [mangaId, chapterId]);
+  }, [mangaId, chapterId, isPremium]);
 
   const pageCount = useMemo(() => state?.pages.length || 0, [state?.pages.length]);
   const pageUri = state?.pages[currentPage];

@@ -1,26 +1,37 @@
+import { Chapter } from '@/src/features/manga/domain/entities/chapter';
+import { FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  Image,
-  ActivityIndicator,
+    ActivityIndicator,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { Chapter } from '@/src/features/manga/domain/entities/chapter';
 
 interface PurchaseModalProps {
   visible: boolean;
   chapter: Chapter | null;
+  userCoins: number;
   isLoading: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  onGoToCoins: () => void;
 }
 
-export function PurchaseModal({ visible, chapter, isLoading, onClose, onConfirm }: PurchaseModalProps) {
+export function PurchaseModal({
+  visible,
+  chapter,
+  userCoins,
+  isLoading,
+  onClose,
+  onConfirm,
+  onGoToCoins,
+}: PurchaseModalProps) {
   if (!chapter) return null;
+  const chapterPrice = chapter.priceTyCoins || 25;
+  const hasInsufficientCoins = userCoins < chapterPrice;
 
   return (
     <Modal
@@ -40,9 +51,13 @@ export function PurchaseModal({ visible, chapter, isLoading, onClose, onConfirm 
             
             <View style={styles.priceRow}>
               <FontAwesome5 name="coins" size={24} color="#F5A623" />
-              <Text style={styles.priceValue}>{chapter.priceTyCoins || 25}</Text>
+              <Text style={styles.priceValue}>{chapterPrice}</Text>
               <Text style={styles.priceCurrency}>Monedas</Text>
             </View>
+
+            <Text style={styles.balanceText}>
+              Saldo actual: <Text style={styles.balanceValue}>{userCoins}</Text> monedas
+            </Text>
           </View>
           
           <View style={styles.actions}>
@@ -56,13 +71,15 @@ export function PurchaseModal({ visible, chapter, isLoading, onClose, onConfirm 
             
             <TouchableOpacity 
               style={styles.confirmButton} 
-              onPress={onConfirm}
+              onPress={hasInsufficientCoins ? onGoToCoins : onConfirm}
               disabled={isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.confirmText}>Comprar</Text>
+                <Text style={styles.confirmText}>
+                  {hasInsufficientCoins ? 'Comprar monedas' : 'Comprar'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -123,6 +140,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+  },
+  balanceText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  balanceValue: {
+    color: '#1A1A2E',
+    fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',

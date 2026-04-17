@@ -1,5 +1,7 @@
-import { StateFlow } from '@/src/shared/hooks';
+import { httpClient } from '@/src/core/http/http-client';
+import { TokenStorageService } from '@/src/core/http/token-storage-service';
 import { Chapter } from '@/src/features/manga/domain/entities/chapter';
+import { StateFlow } from '@/src/shared/hooks';
 
 export interface ChapterPurchaseState {
   chapter: Chapter | null;
@@ -12,7 +14,7 @@ export interface ChapterPurchaseState {
 
 const initialState: ChapterPurchaseState = {
   chapter: null,
-  userCoins: 10, // Mock: usuario empieza con 10 monedas (insuficiente para 25)
+  userCoins: 0,
   isPurchasing: false,
   success: false,
   error: null,
@@ -27,6 +29,22 @@ export class ChapterPurchaseViewModel {
     return this.stateSubject.getValue();
   }
 
+  async loadUserCoins() {
+    try {
+      const token = await TokenStorageService.getToken();
+      if (token) {
+        httpClient.setToken(token);
+      }
+      const response = await httpClient.get<any>('/wallet/balance');
+      const coins = Number(response?.tyCoins ?? response?.coins ?? response?.balance ?? 0);
+      this.updateState({ userCoins: Number.isFinite(coins) ? coins : 0 });
+    } catch (error) {
+      this.updateState({
+        error: 'No se pudo cargar el saldo de monedas',
+      });
+    }
+  }
+
   setChapter(chapter: Chapter) {
     this.updateState({ 
       chapter, 
@@ -34,6 +52,7 @@ export class ChapterPurchaseViewModel {
       error: null, 
       insufficientCoins: false 
     });
+    void this.loadUserCoins();
   }
 
   async purchaseChapter() {

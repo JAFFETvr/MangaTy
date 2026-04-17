@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const LOCAL_PROFILE_PHOTO_KEY = '@mangaty_profile_photo_local';
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [viewModel] = useState<ProfileViewModel>(() =>
@@ -71,16 +73,24 @@ export default function SettingsScreen() {
 
   // Cargar foto específica del usuario cuando su info esté disponible
   useEffect(() => {
-    setPhotoUri(user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null);
+    const loadLocalPhoto = async () => {
+      const localPhoto = await AsyncStorage.getItem(LOCAL_PROFILE_PHOTO_KEY);
+      if (localPhoto) {
+        setPhotoUri(localPhoto);
+        return;
+      }
+      setPhotoUri(user?.avatarUrl ? buildCoverUrl(user.avatarUrl) : null);
+    };
+    void loadLocalPhoto();
   }, [user?.avatarUrl]);
 
   const savePhoto = async (uri: string) => {
     try {
-      const uploadedAvatarUrl = await viewModel.updateProfilePhoto(uri);
-      setPhotoUri(uploadedAvatarUrl);
+      await AsyncStorage.setItem(LOCAL_PROFILE_PHOTO_KEY, uri);
+      setPhotoUri(uri);
     } catch (error) {
       console.error('Error saving photo:', error);
-      Alert.alert('Error', 'No se pudo subir la foto al servidor');
+      Alert.alert('Error', 'No se pudo guardar la foto localmente');
     }
   };
 
@@ -93,6 +103,7 @@ export default function SettingsScreen() {
         'auth_user',
         STORAGE_KEY_EMAIL,
         STORAGE_KEY_USERNAME,
+        LOCAL_PROFILE_PHOTO_KEY,
       ]);
       if (Platform.OS === 'web') {
         globalThis.location?.replace(`${globalThis.location.origin}/login`);
@@ -223,7 +234,7 @@ export default function SettingsScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,

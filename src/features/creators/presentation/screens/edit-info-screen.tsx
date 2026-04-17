@@ -88,7 +88,7 @@ export default function EditInfoScreen({ slug, mangaId }: Props) {
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [2, 3],
       quality: 0.8,

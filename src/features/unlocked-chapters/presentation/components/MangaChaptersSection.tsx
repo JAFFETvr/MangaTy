@@ -11,8 +11,8 @@ import {
     Text,
     View
 } from 'react-native';
-import { ChapterListItem } from './ChapterListItem';
 import { UnlockChapterViewModel } from '../view-models';
+import { ChapterListItem } from './ChapterListItem';
 
 interface MangaChaptersScreenProps {
   manga: Manga;
@@ -78,7 +78,7 @@ export const MangaChaptersSection: React.FC<MangaChaptersScreenProps> = ({
   };
 
   const handleBuyCoins = () => {
-    router.push('/coins-store');
+    router.push('/(tabs)/coins');
   };
 
   const isChapterUnlocked = (chapterNumber: number): boolean => {

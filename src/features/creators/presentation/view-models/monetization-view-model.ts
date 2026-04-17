@@ -12,6 +12,15 @@ export interface Transaction {
   status: 'Completado' | 'Procesando';
 }
 
+interface CreatorProfileResponse {
+  stripeOnboardingDone?: boolean;
+}
+
+interface CreatorEarningsResponse {
+  balanceMxn?: number;
+  totalEarnedMxn?: number;
+}
+
 export interface MonetizationState {
   isLoading: boolean;
   mangaTitle: string;
@@ -109,6 +118,10 @@ export class MonetizationViewModel {
     this.updateState({ isLoading: true, error: null });
 
     try {
+      const token = await TokenStorageService.getToken();
+      if (token) {
+        httpClient.setToken(token);
+      }
       const storageKey = await this.getStorageKey(mangaId);
       const remoteTitle = await this.resolveMangaTitle(mangaId);
       const storedRaw = await AsyncStorage.getItem(storageKey);
@@ -122,6 +135,27 @@ export class MonetizationViewModel {
           mangaTitle: remoteTitle || parsed?.mangaTitle || '',
           transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
         };
+      }
+
+      let profile: CreatorProfileResponse | null = null;
+      let earnings: CreatorEarningsResponse | null = null;
+      try {
+        profile = await httpClient.get<CreatorProfileResponse>('/creator/profile');
+      } catch {
+        profile = null;
+      }
+      try {
+        earnings = await httpClient.get<CreatorEarningsResponse>('/creator/earnings');
+      } catch {
+        earnings = null;
+      }
+
+      if (profile) {
+        payload.isConnectedWithStripe = Boolean(profile.stripeOnboardingDone);
+      }
+      if (earnings) {
+        payload.availableBalance = Number(earnings.balanceMxn ?? payload.availableBalance ?? 0);
+        payload.totalBalance = Number(earnings.totalEarnedMxn ?? payload.totalBalance ?? 0);
       }
 
       await AsyncStorage.setItem(storageKey, JSON.stringify(payload));
@@ -142,24 +176,26 @@ export class MonetizationViewModel {
     this.updateState({ stripeEmail: email, error: null });
   }
 
-  async connectStripe(mangaId: string): Promise<void> {
-    const email = this.getState().stripeEmail.trim().toLowerCase();
-    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!isValidEmail) {
-      this.updateState({ error: 'Ingresa un correo válido para Stripe' });
-      return;
-    }
-
+  async connectStripe(mangaId: string): Promise<string | null> {
     this.updateState({ isLoading: true, error: null });
 
     try {
+      const token = await TokenStorageService.getToken();
+      if (token) {
+        httpClient.setToken(token);
+      }
+      const response = await httpClient.post<{ onboardingUrl?: string }>('/creator/onboarding', {});
+      const onboardingUrl = response?.onboardingUrl;
+      if (!onboardingUrl) {
+        throw new Error('El backend no devolvió onboardingUrl');
+      }
+
       const storageKey = await this.getStorageKey(mangaId);
-      const accountId = `acct_local_${Date.now()}`;
       const next: MonetizationStorage = {
         mangaTitle: this.getState().mangaTitle,
-        isConnectedWithStripe: true,
-        stripeEmail: email,
-        stripeAccountId: accountId,
+        isConnectedWithStripe: this.getState().isConnectedWithStripe,
+        stripeEmail: this.getState().stripeEmail,
+        stripeAccountId: this.getState().stripeAccountId,
         totalBalance: this.getState().totalBalance,
         availableBalance: this.getState().availableBalance,
         pendingBalance: this.getState().pendingBalance,
@@ -173,11 +209,13 @@ export class MonetizationViewModel {
         isLoading: false,
         error: null,
       });
+      return onboardingUrl;
     } catch (error) {
       this.updateState({
         isLoading: false,
-        error: error instanceof Error ? error.message : 'No se pudo conectar Stripe',
+        error: error instanceof Error ? error.message : 'No se pudo iniciar onboarding de Stripe',
       });
+      return null;
     }
   }
 
@@ -195,15 +233,20 @@ export class MonetizationViewModel {
     this.updateState({ isLoading: true, error: null });
 
     try {
+      const token = await TokenStorageService.getToken();
+      if (token) {
+        httpClient.setToken(token);
+      }
       const storageKey = await this.getStorageKey(mangaId);
-      const withdrawalAmount = state.availableBalance;
+      const withdrawalResponse = await httpClient.post<{ amountMxn?: number }>('/creator/withdraw', {});
+      const withdrawalAmount = Number(withdrawalResponse?.amountMxn ?? state.availableBalance);
       const nextTransactions: Transaction[] = [
         {
           id: `withdraw-${Date.now()}`,
           type: 'Retiro a Stripe',
           amount: withdrawalAmount,
           date: new Date().toLocaleDateString('es-ES'),
-          status: 'Procesando',
+          status: 'Completado',
         },
         ...state.transactions,
       ];
@@ -215,17 +258,14 @@ export class MonetizationViewModel {
         stripeAccountId: state.stripeAccountId,
         totalBalance: state.totalBalance,
         availableBalance: 0,
-        pendingBalance: state.pendingBalance + withdrawalAmount,
+        pendingBalance: state.pendingBalance,
         monthlyGrowth: state.monthlyGrowth,
         transactions: nextTransactions,
       };
 
       await AsyncStorage.setItem(storageKey, JSON.stringify(next));
-      this.updateState({
-        ...next,
-        isLoading: false,
-        error: null,
-      });
+      await this.loadMonetization(mangaId);
+      this.updateState({ isLoading: false, error: null });
     } catch (error) {
       this.updateState({
         isLoading: false,

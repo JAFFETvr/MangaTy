@@ -4,10 +4,12 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
+    Linking,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -65,30 +67,32 @@ export default function MonetizationScreen({ mangaId }: Props) {
             </Text>
             <Text style={styles.stripeDesc}>
               {state.isConnectedWithStripe
-                ? `Cuenta vinculada: ${state.stripeEmail}`
+                ? 'Tu cuenta Stripe ya está lista para retiros.'
                 : 'Conecta tu cuenta para recibir pagos de forma segura'}
             </Text>
-            {!state.isConnectedWithStripe ? (
-              <TextInput
-                style={styles.emailInput}
-                placeholder="tu-correo@stripe.com"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={state.stripeEmail}
-                onChangeText={(txt) => viewModel.setStripeEmail(txt)}
-              />
-            ) : null}
           </View>
           <TouchableOpacity
             style={[styles.connectButton, state.isLoading && styles.disabledButton]}
-            onPress={() => viewModel.connectStripe(mangaId)}
+            onPress={async () => {
+              const onboardingUrl = await viewModel.connectStripe(mangaId);
+              if (!onboardingUrl) return;
+              try {
+                if (Platform.OS === 'web') {
+                  globalThis.open?.(onboardingUrl, '_blank');
+                } else {
+                  await Linking.openURL(onboardingUrl);
+                }
+              } catch {
+                Alert.alert('Error', 'No se pudo abrir el enlace de Stripe');
+              }
+            }}
             disabled={state.isLoading || state.isConnectedWithStripe}
           >
             {state.isLoading ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <Text style={styles.connectButtonText}>
-                {state.isConnectedWithStripe ? 'Conectada' : 'Conectar'}
+                {state.isConnectedWithStripe ? 'Conectada' : 'Conectar Stripe'}
               </Text>
             )}
           </TouchableOpacity>
@@ -239,17 +243,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FEEBED',
     gap: 12,
-  },
-  emailInput: {
-    marginTop: 10,
-    backgroundColor: '#FFF9FA',
-    borderWidth: 1,
-    borderColor: '#FEEBED',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#1A1A2E',
   },
   connectButton: {
     height: 42,

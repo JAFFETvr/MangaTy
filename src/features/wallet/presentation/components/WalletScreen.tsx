@@ -35,7 +35,7 @@ export const WalletScreen: React.FC = () => {
   };
 
   const handleBuyCoins = () => {
-    router.push('/coins-store');
+    router.push('/(tabs)/coins');
   };
 
   if (state.isLoading && state.transactions.length === 0) {

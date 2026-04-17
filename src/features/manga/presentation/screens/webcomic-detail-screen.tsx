@@ -24,6 +24,7 @@ import { DIKeys, serviceLocator } from '@/src/di/service-locator';
 import { FavoritesViewModel } from '@/src/features/favorites/presentation/view-models/favorites-view-model';
 import { HistoryViewModel } from '@/src/features/history/presentation/view-models/history-view-model';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -73,6 +74,7 @@ export default function WebcomicDetailScreen({
   const [modalVisible, setModalVisible] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [restrictionMessage, setRestrictionMessage] = useState<string | null>(null);
+  const [configuredPaidChapterIds, setConfiguredPaidChapterIds] = useState<string[] | null>(null);
   const recordedHistoryRef = useRef<string | null>(null);
   const recordedViewRef = useRef<string | null>(null);
 
@@ -89,6 +91,10 @@ export default function WebcomicDetailScreen({
   }, [slug, mangaId]);
 
   useEffect(() => {
+    void purchaseViewModel.loadUserCoins();
+  }, [purchaseViewModel]);
+
+  useEffect(() => {
     if (purchaseState.success) {
       setModalVisible(false);
       // Actualizar estado local — en una app real esto vendría de refrescar el unlocked state
@@ -96,14 +102,7 @@ export default function WebcomicDetailScreen({
     }
     if (purchaseState.insufficientCoins) {
       setModalVisible(false);
-      Alert.alert(
-        'Saldo insuficiente', 
-        'No tienes suficientes monedas para comprar este capítulo. ¿Quieres ir a la tienda?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ir a la tienda', onPress: () => router.push('/tienda') }
-        ]
-      );
+      router.push('/(tabs)/coins');
       purchaseViewModel.reset();
     }
   }, [purchaseState.success, purchaseState.insufficientCoins]);
@@ -139,6 +138,46 @@ export default function WebcomicDetailScreen({
 
     void loadRestriction();
   }, [state.manga?.id]);
+
+  useEffect(() => {
+    const loadPricingConfig = async () => {
+      if (!state.manga) {
+        setConfiguredPaidChapterIds(null);
+        return;
+      }
+
+      const paidKey = `@mangaty_paid_chapters_${state.manga.id}`;
+      const freeLegacyKey = `@mangaty_free_chapters_${state.manga.id}`;
+      const [paidRaw, freeRaw] = await Promise.all([
+        AsyncStorage.getItem(paidKey),
+        AsyncStorage.getItem(freeLegacyKey),
+      ]);
+
+      const allChapterIds = state.manga.chaptersData.map((chapter) => String(chapter.id));
+
+      if (paidRaw) {
+        const paidParsed = JSON.parse(paidRaw);
+        const paidIds = Array.isArray(paidParsed)
+          ? paidParsed.filter((id: unknown) => typeof id === 'string' && allChapterIds.includes(id))
+          : [];
+        setConfiguredPaidChapterIds(paidIds);
+        return;
+      }
+
+      if (freeRaw) {
+        const freeParsed = JSON.parse(freeRaw);
+        const freeIds = Array.isArray(freeParsed)
+          ? freeParsed.filter((id: unknown) => typeof id === 'string' && allChapterIds.includes(id))
+          : [];
+        setConfiguredPaidChapterIds(allChapterIds.filter((id) => !freeIds.includes(id)));
+        return;
+      }
+
+      setConfiguredPaidChapterIds(null);
+    };
+
+    void loadPricingConfig();
+  }, [state.manga?.id, state.manga?.chaptersData]);
 
   useEffect(() => {
     const registerView = async () => {
@@ -196,11 +235,21 @@ export default function WebcomicDetailScreen({
   }
 
   // ─────────────── LÓGICA DE CAPÍTULOS ───────────────
-  const isUnlocked = (ch: Chapter) => unlockedChapterIds.includes(ch.id);
+  const isUnlocked = (ch: Chapter) => unlockedChapterIds.includes(String(ch.id));
+  const isChapterPaid = (ch: Chapter) => {
+    if (configuredPaidChapterIds) {
+      return configuredPaidChapterIds.includes(String(ch.id));
+    }
+    return ch.premium || (ch.priceTyCoins ?? 0) > 0;
+  };
+  const getChapterPrice = (ch: Chapter) => {
+    if (!isChapterPaid(ch)) return 0;
+    return (ch.priceTyCoins ?? 0) > 0 ? ch.priceTyCoins : 25;
+  };
 
   /** Primer capítulo que el usuario puede leer sin pagar  */
   const firstAvailableChapter =
-    manga.chaptersData.find((ch) => !ch.premium || isUnlocked(ch)) ??
+    manga.chaptersData.find((ch) => !isChapterPaid(ch) || isUnlocked(ch)) ??
     manga.chaptersData[0];
 
   const handleStartReading = () => {
@@ -212,12 +261,12 @@ export default function WebcomicDetailScreen({
     void historyViewModel.addEntry(manga.id, firstAvailableChapter.chapterNumber, 0);
     router.push({
       pathname: '/reader/[mangaId]/[chapterId]',
-      params: {
-        mangaId: manga.id,
-        chapterId: firstAvailableChapter.id,
-        isPremium: firstAvailableChapter.premium ? '1' : '0',
-      },
-    });
+        params: {
+          mangaId: manga.id,
+          chapterId: firstAvailableChapter.id,
+          isPremium: isChapterPaid(firstAvailableChapter) ? '1' : '0',
+        },
+      });
   };
 
   const handleChapterPress = (ch: Chapter) => {
@@ -226,7 +275,7 @@ export default function WebcomicDetailScreen({
       return;
     }
     const unlocked = isUnlocked(ch);
-    const isFree = !ch.premium;
+    const isFree = !isChapterPaid(ch);
 
     if (isFree || unlocked) {
       void historyViewModel.addEntry(manga.id, ch.chapterNumber, 0);
@@ -235,12 +284,16 @@ export default function WebcomicDetailScreen({
         params: {
           mangaId: manga.id,
           chapterId: ch.id,
-          isPremium: ch.premium ? '1' : '0',
+          isPremium: isChapterPaid(ch) ? '1' : '0',
         },
       });
     } else {
       // Mostrar modal de compra
-      purchaseViewModel.setChapter(ch);
+      purchaseViewModel.setChapter({
+        ...ch,
+        premium: true,
+        priceTyCoins: getChapterPrice(ch),
+      });
       setModalVisible(true);
     }
   };
@@ -372,7 +425,7 @@ export default function WebcomicDetailScreen({
           ) : (
             manga.chaptersData.map((chapter) => {
               const unlocked = isUnlocked(chapter);
-              const isFree = !chapter.premium;
+              const isFree = !isChapterPaid(chapter);
 
               return (
                 <TouchableOpacity
@@ -412,7 +465,7 @@ export default function WebcomicDetailScreen({
                       {!unlocked && !isFree && (
                         <View style={styles.coinBadge}>
                           <FontAwesome5 name="coins" size={10} color="#F5A623" />
-                          <Text style={styles.coinBadgeText}>{chapter.priceTyCoins}</Text>
+                          <Text style={styles.coinBadgeText}>{getChapterPrice(chapter)}</Text>
                         </View>
                       )}
                     </View>
@@ -445,9 +498,15 @@ export default function WebcomicDetailScreen({
       <PurchaseModal 
         visible={modalVisible}
         chapter={purchaseState.chapter}
+        userCoins={purchaseState.userCoins}
         isLoading={purchaseState.isPurchasing}
         onClose={() => setModalVisible(false)}
         onConfirm={() => purchaseViewModel.purchaseChapter()}
+        onGoToCoins={() => {
+          setModalVisible(false);
+          purchaseViewModel.reset();
+          router.push('/(tabs)/coins');
+        }}
       />
 
     </View>
