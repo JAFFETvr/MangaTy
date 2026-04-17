@@ -108,7 +108,7 @@ export default function SettingsScreen() {
       if (Platform.OS === 'web') {
         globalThis.location?.replace(`${globalThis.location.origin}/login`);
       } else {
-        router.replace('/login');
+        router.replace('/(auth)/login');
       }
     } catch (error) {
       console.error('❌ Error en logout:', error);
