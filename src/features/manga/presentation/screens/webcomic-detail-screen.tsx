@@ -459,7 +459,7 @@ export default function WebcomicDetailScreen({
                       )}
                       {!unlocked && isFree && (
                         <View style={styles.freeBadge}>
-                          <Text style={styles.freeBadgeText}>Gratis con anuncios</Text>
+                          <Text style={styles.freeBadgeText}>Gratis</Text>
                         </View>
                       )}
                       {!unlocked && !isFree && (
